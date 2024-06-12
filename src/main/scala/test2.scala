@@ -1,24 +1,26 @@
 import chisel3._
 import chisel3.util._
 
-class alu extends Module{
-    val io = IO(new Bundle {
-        val fn = Input(UInt(2.W))
-        val a = Input(UInt(8.W))
-        val b = Input(UInt(8.W))
-        val y = Output(UInt(8.W))
+class encode83 extends Module{
+    val io =  IO(new Bundle {
+        val in = Input(UInt(8.W))
+        val out = Output(UInt(3.W))
     })
 
-    io.y := 0.U
-
-    switch(io.fn){
-        is(0.U) {io.y := io.a + io.b}
-        is(1.U) {io.y := io.a - io.b}
-        is(2.U) {io.y := io.a / io.b}
-        is(3.U) {io.y := io.a % io.b}
+    io.out := 0.U
+    
+    switch(io.in){
+        is(0.U) {io.out := 0.U}
+        is(1.U) {io.out := 1.U}
+        is(2.U) {io.out := 2.U}
+        is(4.U) {io.out := 3.U}
+        is(8.U) {io.out := 4.U}
+        is(16.U) {io.out := 5.U}
+        is(32.U) {io.out := 6.U}
+        is(64.U) {io.out := 7.U}
     }
 }
 
-object alu extends  App{
-    emitVerilog(new alu())
+object   encode83 extends App{
+    emitVerilog(new encode83(), Array("--target-dir", "generated"))
 }
