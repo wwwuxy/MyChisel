@@ -1,11 +1,11 @@
 import chisel3._
 import  chisel3.util._
 
-class alu extends Module{
+class alu1 extends Module{
     val io = IO(new Bundle {
         val a = Input(UInt(4.W))
         val b = Input(UInt(4.W))
-        val sel = Input(UInt(3.W))
+        val sel = Input(UInt(8.W))
         val y = Output(UInt(4.W))
     })
 
@@ -23,6 +23,6 @@ class alu extends Module{
     }
 }
 
-object alu extends App{
-    emitVerilog(new alu(), Array("--target-dir","generated"))
+object alu1 extends App{
+    emitVerilog(new alu1(), Array("--target-dir","generated"))
 }
