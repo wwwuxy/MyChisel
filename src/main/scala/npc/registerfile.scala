@@ -17,6 +17,8 @@ class registerfile extends Module{
     val rd_addr = Wire(UInt(5.W))
     rd_addr := io.pc(11,7)
 
+
+    
     FileReg(0) := 0.U
 
     io.rs1 := FileReg(io.pc(19, 15))

@@ -1,4 +1,4 @@
-PRG = registerfile
+PRG = pc
 BUILD = generated
 
 sim:
