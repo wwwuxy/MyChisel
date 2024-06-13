@@ -6,7 +6,7 @@ import chisel3.util._
 class registerfile extends Module{
     val io = IO(new Bundle {
         val pc = Input(UInt(32.W))
-        val wren = Input(Bool())
+        val rd_en = Input(Bool())
         val rsl = Input(UInt(32.W))
         val rs1 = Output(UInt(32.W))
         val rs2 = Output(UInt(32.W))
@@ -25,13 +25,13 @@ class registerfile extends Module{
     io.rs2 := FileReg(io.pc(24, 20))
     io.inst := io.pc
 
-    when(io.wren){
+    when(io.rd_en){
         FileReg(rd_addr) := io.rsl
     }
 // FileReg(rd_addr) := Mux(io.wren, io.rsl, FileReg(rd_addr))
     
 }
 
-// object registerfile extends App{
-//     emitVerilog(new registerfile(), Array("--target-dir", "generated"))
-// }
+object registerfile extends App{
+    emitVerilog(new registerfile(), Array("--target-dir", "generated"))
+}

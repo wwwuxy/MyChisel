@@ -7,7 +7,7 @@ class alu extends Module{
     val io = IO(new Bundle {
         val op1 = Input(UInt(32.W))
         val op2 = Input(UInt(32.W))
-        val sel = Input(UInt(8.W))
+        val alu_sel = Input(UInt(8.W))
         val rsl = Output(UInt(32.W))
     })
 
@@ -24,7 +24,7 @@ class alu extends Module{
 
     val res = VecInit(Seq(add, sub, not, and, or, xor, cmp, eql))
 
-    io.rsl := Mux1H(io.sel, res)
+    io.rsl := Mux1H(io.alu_sel, res)
 }
 
 // object alu extends App{

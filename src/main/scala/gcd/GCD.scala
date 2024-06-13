@@ -43,5 +43,5 @@ object GCD extends App {
     new GCD,
     firtoolOpts = Array("-disable-all-randomization", "-strip-debug-info")
   )
-  emitVerilog(new GCD(), Array("--target-dir", "generated"))
+  // emitVerilog(new GCD(), Array("--target-dir", "generated"))
 }

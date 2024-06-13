@@ -9,13 +9,17 @@ class pc extends Module{
         val dnpc = Input(UInt(32.W))
         val next_pc = Output(UInt(32.W))
     })
+//pc复位值为0x80000000
+    val pc = RegInit("h8000_0000".U(32.W))
+    io.next_pc := pc
+
     when(io.jump_en){
-        io.next_pc := io.dnpc
+        pc := io.dnpc
     }.otherwise{
-        io.next_pc := io.dnpc + 4.U
+        pc := pc + 4.U
     }
 }
 
-object pc extends App{
-    emitVerilog(new pc(), Array("--target-dir", "generated"))
-}
+// object pc extends App{
+//     emitVerilog(new pc(), Array("--target-dir", "generated"))
+// }

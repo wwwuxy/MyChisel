@@ -1,4 +1,4 @@
-PRG = pc
+PRG = Main
 BUILD = generated
 
 sim:
