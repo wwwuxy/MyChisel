@@ -6,22 +6,23 @@ import chisel3.util._
 class controller extends Module{
     val io = IO(new Bundle {
         val inst = Input(UInt(32.W))
-        val rs1_en = Output(Bool())
-        val rs2_en = Output(Bool())
-        val rd_en = Output(Bool())
-        val imm_en = Output(Bool())
-        val alu_sel = Output(UInt(8.W))
-        val pc_jump = Output(Bool())
+        val rf_wr_en = Output(Bool())
+        val rf_wr_sel = Output(UInt(2.W))
+        val alu_a_sel = Output(UInt(2.W))
+        val alu_b_sel = Output(UInt(2.W))
+        val alu_sel = Output(UInt(12.W))
+        val jump_en = Output(Bool())
         val imm = Output(UInt(32.W))
     })
 //inital enable signal
-    io.rs1_en := 0.U
-    io.rs2_en := 0.U
-    io.rd_en := 0.U
-    io.imm_en := 0.U
+    io.rf_wr_en := false.B
+    io.jump_en := false.B
     io.alu_sel := 0.U
-    io.pc_jump := 0.U
+    io.rf_wr_sel := 0.U
     io.imm := 0.U
+    io.alu_a_sel := 0.U
+    io.alu_b_sel := 0.U
+    io.alu_sel := 0.U
 
 //根据opcode确定指令类型
     val opcode = Wire(UInt(7.W))
@@ -49,9 +50,7 @@ class controller extends Module{
 // addi
     when(isI_type && is_addi){
         io.alu_sel := "b0000_0001".U
-        io.rs1_en := 1.B
-        io.rd_en := 1.B
-        io.imm_en := 1.B
+        
     }
 }
 

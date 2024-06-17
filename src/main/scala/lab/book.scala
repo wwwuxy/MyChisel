@@ -1,26 +1,7 @@
+package lab
+
 import chisel3._
 
-class adder extends Module{
-    val io = IO(new Bundle {
-        val a = Input(UInt(32.W))
-        val b = Input(UInt(32.W))
-        val y = Output(UInt(32.W))
-    })
-     
-    io.y := io.a + io.b
-}
-
-class register extends Module{
-    val io = IO(new Bundle {
-        val d = Input(UInt(8.W))
-        val q = Output(UInt(32.W))
-    })
-
-    val reg = RegInit(0.U)
-
-    reg := io.d
-    io.q := reg
-}
 
 class count10 extends Module{
     val io = IO(new Bundle {

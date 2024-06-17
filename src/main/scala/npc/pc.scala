@@ -6,7 +6,7 @@ import chisel3.util._
 class pc extends Module{
     val io = IO(new Bundle {
         val jump_en = Input(Bool())
-        val dnpc = Input(UInt(32.W))
+        val jump_pc = Input(UInt(32.W))
         val next_pc = Output(UInt(32.W))
     })
 //pc复位值为0x80000000
@@ -14,10 +14,11 @@ class pc extends Module{
     io.next_pc := pc
 
     when(io.jump_en){
-        pc := io.dnpc
+        pc := io.jump_pc
     }.otherwise{
         pc := pc + 4.U
     }
+
 }
 
 // object pc extends App{

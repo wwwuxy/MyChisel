@@ -1,4 +1,4 @@
-PRG = Main
+PRG = top
 BUILD = generated
 
 sim:
