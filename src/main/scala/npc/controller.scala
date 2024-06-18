@@ -7,21 +7,24 @@ class controller extends Module{
     val io = IO(new Bundle {
         val inst = Input(UInt(32.W))
         val rf_wr_en = Output(Bool())
-        val rf_wr_sel = Output(UInt(2.W))
-        val alu_a_sel = Output(UInt(2.W))
-        val alu_b_sel = Output(UInt(2.W))
+        val rf_wr_sel = Output(Bool())
+        val alu_a_sel = Output(Bool())
+        val alu_b_sel = Output(Bool())
+        val mem_wr = Output(Bool())
         val alu_sel = Output(UInt(12.W))
         val jump_en = Output(Bool())
         val imm = Output(UInt(32.W))
     })
+
 //inital enable signal
     io.rf_wr_en := false.B
     io.jump_en := false.B
     io.alu_sel := 0.U
-    io.rf_wr_sel := 0.U
+    io.rf_wr_sel := false.B
     io.imm := 0.U
-    io.alu_a_sel := 0.U
-    io.alu_b_sel := 0.U
+    io.alu_a_sel := false.B
+    io.alu_b_sel := false.B
+    io.mem_wr := false.B
     io.alu_sel := 0.U
 
 //根据opcode确定指令类型
@@ -43,6 +46,9 @@ class controller extends Module{
         val imm_i = Wire(UInt(12.W))
         imm_i := io.inst(31, 20)
         io.imm := Cat(Fill(20, imm_i(11)), imm_i)
+        io.alu_a_sel := true.B
+        io.alu_b_sel := false.B
+
     }
 
     val is_addi = (fun3 === "b000".U)
