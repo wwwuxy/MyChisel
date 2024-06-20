@@ -2,13 +2,16 @@ package npc
 
 import chisel3._
 import chisel3.util._
+import chisel3.stage._
 
 // import org.fusesource.jansi.internal.Kernel32.COORD
 
 class top extends Module{
     val io =IO(new Bundle {
-        val ret = Output(UInt(32.W))
+        val nemutrap = Output(Bool())
     })
+    io.nemutrap := false.B
+
 //实例化各个组件
     val Pc = Module(new pc())
     val Alu = Module(new alu())
@@ -51,11 +54,12 @@ class top extends Module{
     Alu.io.op1 := InputAlu.io.rs1
     Alu.io.op2 := InputAlu.io.rs2
 
-    io.ret := Alu.io.rsl
+//ebreak
+    io.nemutrap := Controller.io.nemutrap
 }
 
 
 object top extends App{
-    emitVerilog(new top(), Array("--target-dir", "generated"))
+    emitVerilog(new top(), Array("--target-dir", "generated", "--target:verilog"))
 }
 

@@ -14,6 +14,7 @@ class controller extends Module{
         val alu_sel = Output(UInt(12.W))
         val jump_en = Output(Bool())
         val imm = Output(UInt(32.W))
+        val nemutrap = Output(Bool())
     })
 
 //inital enable signal
@@ -26,6 +27,7 @@ class controller extends Module{
     io.alu_b_sel := false.B
     io.mem_wr := false.B
     io.alu_sel := 0.U
+    io.nemutrap := false.B
 
 //根据opcode确定指令类型
     val opcode = Wire(UInt(7.W))
@@ -46,17 +48,20 @@ class controller extends Module{
         val imm_i = Wire(UInt(12.W))
         imm_i := io.inst(31, 20)
         io.imm := Cat(Fill(20, imm_i(11)), imm_i)
-        io.alu_a_sel := true.B
-        io.alu_b_sel := false.B
-
     }
 
     val is_addi = (fun3 === "b000".U)
+    val is_ebreak = (io.inst === "b000000000001_00000_000_00000_1110011".U)
+
 
 // addi
     when(isI_type && is_addi){
         io.alu_sel := "b0000_0001".U
-        
+        io.alu_a_sel := true.B
+        io.alu_b_sel := false.B
+    }
+    when(is_ebreak){
+        io.nemutrap := true.B
     }
 }
 
