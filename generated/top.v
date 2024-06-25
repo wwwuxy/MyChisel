@@ -397,6 +397,7 @@ module mem(
   );
 endmodule
 
+
 module top(	
   input  clock,	
          reset,	
@@ -405,6 +406,7 @@ module top(
 
   wire [31:0] _Mem_io_im_out;	
   wire [11:0] _Controller_io_alu_sel;	
+  wire        _Controller_io_nemutrap;	
   wire [31:0] _RegisterFile_io_rd1;	
   wire [31:0] _RegisterFile_io_rd2;	
   wire [31:0] _Alu_io_rsl;	
@@ -430,13 +432,17 @@ module top(
   controller Controller (	
     .io_inst     (_Mem_io_im_out),	
     .io_alu_sel  (_Controller_io_alu_sel),
-    .io_nemutrap (io_nemutrap)
+    .io_nemutrap (_Controller_io_nemutrap)
   );
   mem Mem (	
     .clock      (clock),
     .io_im_addr (_Pc_io_next_pc),	
     .io_dm_addr (_Alu_io_rsl),	
     .io_im_out  (_Mem_io_im_out)
+  );
+  dpi Dpi (	
+    .flag      (_Controller_io_nemutrap),	
+    .nemu_trap (io_nemutrap)
   );
 endmodule
 
@@ -448,3 +454,17 @@ module mem_1024x32_init();
 endmodule
 
 bind mem_1024x32 mem_1024x32_init mem_1024x32_init ();
+
+
+module is_ebreak(
+    input flag,
+    output nemu_trap
+);
+assign nemu_trap = flag;
+
+import "DPI-C" funtion bool is_break(input bool flag);
+
+endmodule
+
+
+ebreak.v

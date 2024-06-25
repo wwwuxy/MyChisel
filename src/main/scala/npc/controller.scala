@@ -67,4 +67,3 @@ class controller extends Module{
 
 // object controller extends App{
 //     emitVerilog(new controller(), Array("--target-dir", "generated"))
-// }

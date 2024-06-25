@@ -6,6 +6,17 @@ import chisel3.stage._
 
 // import org.fusesource.jansi.internal.Kernel32.COORD
 
+//BlackBox
+class dpi extends BlackBox with HasBlackBoxResource{
+    val io = IO(new Bundle{
+        val flag = Input(Bool())
+        val nemu_trap = Output(Bool())
+    })
+    addResource("/ebreak.v")
+}
+
+
+// top module
 class top extends Module{
     val io =IO(new Bundle {
         val nemutrap = Output(Bool())
@@ -20,6 +31,7 @@ class top extends Module{
     val InputAlu = Module(new inputalu())
     val Mem = Module(new mem())
     val InputReg = Module(new inputreg())
+    val Dpi = Module(new dpi())
 
 // PC
     Mem.io.im_addr := Pc.io.next_pc
@@ -55,9 +67,10 @@ class top extends Module{
     Alu.io.op2 := InputAlu.io.rs2
 
 //ebreak
-    io.nemutrap := Controller.io.nemutrap
+    Dpi.io.flag := Controller.io.nemutrap
+    io.nemutrap := Dpi.io.nemu_trap
 }
-
+ 
 
 object top extends App{
     emitVerilog(new top(), Array("--target-dir", "generated", "--target:verilog"))
