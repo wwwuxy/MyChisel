@@ -1,9 +1,4 @@
 `ifndef RANDOMIZE
-  `ifdef RANDOMIZE_MEM_INIT
-    `define RANDOMIZE
-  `endif 
-`endif 
-`ifndef RANDOMIZE
   `ifdef RANDOMIZE_REG_INIT
     `define RANDOMIZE
   `endif 
@@ -337,134 +332,77 @@ endmodule
 
 module controller(	
   input  [31:0] io_inst,	
+  output        io_alu_a_sel,	
   output [11:0] io_alu_sel,	
-  output        io_nemutrap	
+  output [31:0] io_imm	
 );
 
-  assign io_alu_sel = {11'h0, io_inst[6:0] == 7'h13 & io_inst[14:12] == 3'h0};	
-  assign io_nemutrap = io_inst == 32'h100073;	
+  wire isI_type = io_inst[6:0] == 7'h13;	
+  wire io_alu_a_sel_0 = isI_type & io_inst[14:12] == 3'h0;	
+  assign io_alu_a_sel = io_alu_a_sel_0;	
+  assign io_alu_sel = {11'h0, io_alu_a_sel_0};	
+  assign io_imm = isI_type ? {{20{io_inst[31]}}, io_inst[31:20]} : 32'h0;	
 endmodule
 
-module mem_1024x32(	
-  input  [9:0]  R0_addr,
-  input         R0_en,
-                R0_clk,
-  output [31:0] R0_data
+module inputalu(	
+  input  [31:0] io_rs1,	
+                io_imm,	
+  input         io_alu_a_sel,	
+  output [31:0] io_op1,	
+                io_op2	
 );
 
-  reg [31:0] Memory[0:1023];	
-  reg        _R0_en_d0;	
-  reg [9:0]  _R0_addr_d0;	
-  always @(posedge R0_clk) begin	
-    _R0_en_d0 <= R0_en;	
-    _R0_addr_d0 <= R0_addr;	
-  end 
-  `ifdef ENABLE_INITIAL_MEM_	
-    `ifdef RANDOMIZE_REG_INIT	
-      reg [31:0] _RANDOM;	
-    `endif 
-    reg [31:0] _RANDOM_MEM;	
-    initial begin	
-      `INIT_RANDOM_PROLOG_	
-      `ifdef RANDOMIZE_MEM_INIT	
-        for (logic [10:0] i = 11'h0; i < 11'h400; i += 11'h1) begin
-          _RANDOM_MEM = `RANDOM;	
-          Memory[i[9:0]] = _RANDOM_MEM;	
-        end	
-      `endif 
-      `ifdef RANDOMIZE_REG_INIT	
-        _RANDOM = {`RANDOM};	
-        _R0_en_d0 = _RANDOM[0];	
-        _R0_addr_d0 = _RANDOM[10:1];	
-      `endif 
-    end 
-  `endif 
-  assign R0_data = _R0_en_d0 ? Memory[_R0_addr_d0] : 32'bx;	
+  assign io_op1 = io_alu_a_sel ? io_rs1 : 32'h0;	
+  assign io_op2 = io_imm;	
 endmodule
-
-module mem(	
-  input         clock,	
-  input  [31:0] io_im_addr,	
-                io_dm_addr,	
-  output [31:0] io_im_out	
-);
-
-  mem_1024x32 mem_ext (	
-    .R0_addr (io_im_addr[9:0]),	
-    .R0_en   (1'h1),	
-    .R0_clk  (clock),
-    .R0_data (io_im_out)
-  );
-endmodule
-
 
 module top(	
-  input  clock,	
-         reset,	
-  output io_nemutrap	
+  input         clock,	
+                reset,	
+  input  [31:0] io_inst,	
+  output [31:0] io_pc,	
+                io_addr,	
+                io_data,	
+  output        io_mem_wr	
 );
 
-  wire [31:0] _Mem_io_im_out;	
+  wire [31:0] _InputAlu_io_op1;	
+  wire [31:0] _InputAlu_io_op2;	
+  wire        _Controller_io_alu_a_sel;	
   wire [11:0] _Controller_io_alu_sel;	
-  wire        _Controller_io_nemutrap;	
+  wire [31:0] _Controller_io_imm;	
   wire [31:0] _RegisterFile_io_rd1;	
-  wire [31:0] _RegisterFile_io_rd2;	
-  wire [31:0] _Alu_io_rsl;	
-  wire [31:0] _Pc_io_next_pc;	
   pc Pc (	
     .clock      (clock),
     .reset      (reset),
-    .io_next_pc (_Pc_io_next_pc)
+    .io_next_pc (io_pc)
   );
   alu Alu (	
-    .io_op1     (_RegisterFile_io_rd1),	
-    .io_op2     (_RegisterFile_io_rd2),	
+    .io_op1     (_InputAlu_io_op1),	
+    .io_op2     (_InputAlu_io_op2),	
     .io_alu_sel (_Controller_io_alu_sel),	
-    .io_rsl     (_Alu_io_rsl)
+    .io_rsl     (io_addr)
   );
   registerfile RegisterFile (	
     .clock   (clock),
     .reset   (reset),
-    .io_inst (_Mem_io_im_out),	
+    .io_inst (io_inst),
     .io_rd1  (_RegisterFile_io_rd1),
-    .io_rd2  (_RegisterFile_io_rd2)
+    .io_rd2  (io_data)
   );
   controller Controller (	
-    .io_inst     (_Mem_io_im_out),	
-    .io_alu_sel  (_Controller_io_alu_sel),
-    .io_nemutrap (_Controller_io_nemutrap)
+    .io_inst      (io_inst),
+    .io_alu_a_sel (_Controller_io_alu_a_sel),
+    .io_alu_sel   (_Controller_io_alu_sel),
+    .io_imm       (_Controller_io_imm)
   );
-  mem Mem (	
-    .clock      (clock),
-    .io_im_addr (_Pc_io_next_pc),	
-    .io_dm_addr (_Alu_io_rsl),	
-    .io_im_out  (_Mem_io_im_out)
+  inputalu InputAlu (	
+    .io_rs1       (_RegisterFile_io_rd1),	
+    .io_imm       (_Controller_io_imm),	
+    .io_alu_a_sel (_Controller_io_alu_a_sel),	
+    .io_op1       (_InputAlu_io_op1),
+    .io_op2       (_InputAlu_io_op2)
   );
-  dpi Dpi (	
-    .flag      (_Controller_io_nemutrap),	
-    .nemu_trap (io_nemutrap)
-  );
+  assign io_mem_wr = 1'h0;	
 endmodule
 
-
-
-module mem_1024x32_init();	
-  initial	
-    $readmemh("mem.hex", mem_1024x32.Memory);	
-endmodule
-
-bind mem_1024x32 mem_1024x32_init mem_1024x32_init ();
-
-
-module is_ebreak(
-    input flag,
-    output nemu_trap
-);
-assign nemu_trap = flag;
-
-import "DPI-C" funtion bool is_break(input bool flag);
-
-endmodule
-
-
-ebreak.v

@@ -13,6 +13,6 @@ class inputreg extends Module{
     io.wd := Mux(io.rf_wr_sel, io.alu_out, io.dm_out)
 }
 
-object inputreg extends App{
-    emitVerilog(new inputreg(), Array("--target-dir","generated"))
-}
+// object inputreg extends App{
+//     emitVerilog(new inputreg(), Array("--target-dir","generated"))
+// }

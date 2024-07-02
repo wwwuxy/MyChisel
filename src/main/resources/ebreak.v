@@ -5,6 +5,6 @@ module is_ebreak(
 assign nemu_trap = flag;
 
 //通过DPI-C通知仿真环境是否为ebreak
-import "DPI-C" funtion bool is_break(input bool flag);
+import "DPI-C" function int is_break(input int flag);
 
 endmodule
