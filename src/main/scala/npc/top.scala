@@ -44,6 +44,7 @@ class top extends Module{
     Pc.io.jump_en := Controller.io.jump_en
     Pc.io.jump_pc := Alu.io.rsl
     io.pc := Pc.io.next_pc
+    InputAlu.io.pc := Pc.io.next_pc
 
 //Mem 
     // Controller.io.inst := Mem.io.im_out

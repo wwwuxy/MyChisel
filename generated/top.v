@@ -100,6 +100,8 @@ module registerfile(
   input         clock,	
                 reset,	
   input  [31:0] io_inst,	
+  input         io_wr_en,	
+  input  [31:0] io_wd,	
   output [31:0] io_rd1,	
                 io_rd2	
 );
@@ -207,72 +209,200 @@ module registerfile(
     else begin	
       automatic logic [31:0] _GEN_0;	
       _GEN_0 = _GEN[io_inst[11:7]];	
-      if (io_inst[11:7] == 5'h0)	
-        FileReg_0 <= _GEN_0;	
+      if (io_inst[11:7] == 5'h0) begin	
+        if (io_wr_en)	
+          FileReg_0 <= io_wd;	
+        else	
+          FileReg_0 <= _GEN_0;	
+      end
       else	
         FileReg_0 <= 32'h0;	
-      if (io_inst[11:7] == 5'h1)	
-        FileReg_1 <= _GEN_0;	
-      if (io_inst[11:7] == 5'h2)	
-        FileReg_2 <= _GEN_0;	
-      if (io_inst[11:7] == 5'h3)	
-        FileReg_3 <= _GEN_0;	
-      if (io_inst[11:7] == 5'h4)	
-        FileReg_4 <= _GEN_0;	
-      if (io_inst[11:7] == 5'h5)	
-        FileReg_5 <= _GEN_0;	
-      if (io_inst[11:7] == 5'h6)	
-        FileReg_6 <= _GEN_0;	
-      if (io_inst[11:7] == 5'h7)	
-        FileReg_7 <= _GEN_0;	
-      if (io_inst[11:7] == 5'h8)	
-        FileReg_8 <= _GEN_0;	
-      if (io_inst[11:7] == 5'h9)	
-        FileReg_9 <= _GEN_0;	
-      if (io_inst[11:7] == 5'hA)	
-        FileReg_10 <= _GEN_0;	
-      if (io_inst[11:7] == 5'hB)	
-        FileReg_11 <= _GEN_0;	
-      if (io_inst[11:7] == 5'hC)	
-        FileReg_12 <= _GEN_0;	
-      if (io_inst[11:7] == 5'hD)	
-        FileReg_13 <= _GEN_0;	
-      if (io_inst[11:7] == 5'hE)	
-        FileReg_14 <= _GEN_0;	
-      if (io_inst[11:7] == 5'hF)	
-        FileReg_15 <= _GEN_0;	
-      if (io_inst[11:7] == 5'h10)	
-        FileReg_16 <= _GEN_0;	
-      if (io_inst[11:7] == 5'h11)	
-        FileReg_17 <= _GEN_0;	
-      if (io_inst[11:7] == 5'h12)	
-        FileReg_18 <= _GEN_0;	
-      if (io_inst[11:7] == 5'h13)	
-        FileReg_19 <= _GEN_0;	
-      if (io_inst[11:7] == 5'h14)	
-        FileReg_20 <= _GEN_0;	
-      if (io_inst[11:7] == 5'h15)	
-        FileReg_21 <= _GEN_0;	
-      if (io_inst[11:7] == 5'h16)	
-        FileReg_22 <= _GEN_0;	
-      if (io_inst[11:7] == 5'h17)	
-        FileReg_23 <= _GEN_0;	
-      if (io_inst[11:7] == 5'h18)	
-        FileReg_24 <= _GEN_0;	
-      if (io_inst[11:7] == 5'h19)	
-        FileReg_25 <= _GEN_0;	
-      if (io_inst[11:7] == 5'h1A)	
-        FileReg_26 <= _GEN_0;	
-      if (io_inst[11:7] == 5'h1B)	
-        FileReg_27 <= _GEN_0;	
-      if (io_inst[11:7] == 5'h1C)	
-        FileReg_28 <= _GEN_0;	
-      if (io_inst[11:7] == 5'h1D)	
-        FileReg_29 <= _GEN_0;	
-      if (io_inst[11:7] == 5'h1E)	
-        FileReg_30 <= _GEN_0;	
-      if (&(io_inst[11:7]))	
-        FileReg_31 <= _GEN_0;	
+      if (io_inst[11:7] == 5'h1) begin	
+        if (io_wr_en)	
+          FileReg_1 <= io_wd;	
+        else	
+          FileReg_1 <= _GEN_0;	
+      end
+      if (io_inst[11:7] == 5'h2) begin	
+        if (io_wr_en)	
+          FileReg_2 <= io_wd;	
+        else	
+          FileReg_2 <= _GEN_0;	
+      end
+      if (io_inst[11:7] == 5'h3) begin	
+        if (io_wr_en)	
+          FileReg_3 <= io_wd;	
+        else	
+          FileReg_3 <= _GEN_0;	
+      end
+      if (io_inst[11:7] == 5'h4) begin	
+        if (io_wr_en)	
+          FileReg_4 <= io_wd;	
+        else	
+          FileReg_4 <= _GEN_0;	
+      end
+      if (io_inst[11:7] == 5'h5) begin	
+        if (io_wr_en)	
+          FileReg_5 <= io_wd;	
+        else	
+          FileReg_5 <= _GEN_0;	
+      end
+      if (io_inst[11:7] == 5'h6) begin	
+        if (io_wr_en)	
+          FileReg_6 <= io_wd;	
+        else	
+          FileReg_6 <= _GEN_0;	
+      end
+      if (io_inst[11:7] == 5'h7) begin	
+        if (io_wr_en)	
+          FileReg_7 <= io_wd;	
+        else	
+          FileReg_7 <= _GEN_0;	
+      end
+      if (io_inst[11:7] == 5'h8) begin	
+        if (io_wr_en)	
+          FileReg_8 <= io_wd;	
+        else	
+          FileReg_8 <= _GEN_0;	
+      end
+      if (io_inst[11:7] == 5'h9) begin	
+        if (io_wr_en)	
+          FileReg_9 <= io_wd;	
+        else	
+          FileReg_9 <= _GEN_0;	
+      end
+      if (io_inst[11:7] == 5'hA) begin	
+        if (io_wr_en)	
+          FileReg_10 <= io_wd;	
+        else	
+          FileReg_10 <= _GEN_0;	
+      end
+      if (io_inst[11:7] == 5'hB) begin	
+        if (io_wr_en)	
+          FileReg_11 <= io_wd;	
+        else	
+          FileReg_11 <= _GEN_0;	
+      end
+      if (io_inst[11:7] == 5'hC) begin	
+        if (io_wr_en)	
+          FileReg_12 <= io_wd;	
+        else	
+          FileReg_12 <= _GEN_0;	
+      end
+      if (io_inst[11:7] == 5'hD) begin	
+        if (io_wr_en)	
+          FileReg_13 <= io_wd;	
+        else	
+          FileReg_13 <= _GEN_0;	
+      end
+      if (io_inst[11:7] == 5'hE) begin	
+        if (io_wr_en)	
+          FileReg_14 <= io_wd;	
+        else	
+          FileReg_14 <= _GEN_0;	
+      end
+      if (io_inst[11:7] == 5'hF) begin	
+        if (io_wr_en)	
+          FileReg_15 <= io_wd;	
+        else	
+          FileReg_15 <= _GEN_0;	
+      end
+      if (io_inst[11:7] == 5'h10) begin	
+        if (io_wr_en)	
+          FileReg_16 <= io_wd;	
+        else	
+          FileReg_16 <= _GEN_0;	
+      end
+      if (io_inst[11:7] == 5'h11) begin	
+        if (io_wr_en)	
+          FileReg_17 <= io_wd;	
+        else	
+          FileReg_17 <= _GEN_0;	
+      end
+      if (io_inst[11:7] == 5'h12) begin	
+        if (io_wr_en)	
+          FileReg_18 <= io_wd;	
+        else	
+          FileReg_18 <= _GEN_0;	
+      end
+      if (io_inst[11:7] == 5'h13) begin	
+        if (io_wr_en)	
+          FileReg_19 <= io_wd;	
+        else	
+          FileReg_19 <= _GEN_0;	
+      end
+      if (io_inst[11:7] == 5'h14) begin	
+        if (io_wr_en)	
+          FileReg_20 <= io_wd;	
+        else	
+          FileReg_20 <= _GEN_0;	
+      end
+      if (io_inst[11:7] == 5'h15) begin	
+        if (io_wr_en)	
+          FileReg_21 <= io_wd;	
+        else	
+          FileReg_21 <= _GEN_0;	
+      end
+      if (io_inst[11:7] == 5'h16) begin	
+        if (io_wr_en)	
+          FileReg_22 <= io_wd;	
+        else	
+          FileReg_22 <= _GEN_0;	
+      end
+      if (io_inst[11:7] == 5'h17) begin	
+        if (io_wr_en)	
+          FileReg_23 <= io_wd;	
+        else	
+          FileReg_23 <= _GEN_0;	
+      end
+      if (io_inst[11:7] == 5'h18) begin	
+        if (io_wr_en)	
+          FileReg_24 <= io_wd;	
+        else	
+          FileReg_24 <= _GEN_0;	
+      end
+      if (io_inst[11:7] == 5'h19) begin	
+        if (io_wr_en)	
+          FileReg_25 <= io_wd;	
+        else	
+          FileReg_25 <= _GEN_0;	
+      end
+      if (io_inst[11:7] == 5'h1A) begin	
+        if (io_wr_en)	
+          FileReg_26 <= io_wd;	
+        else	
+          FileReg_26 <= _GEN_0;	
+      end
+      if (io_inst[11:7] == 5'h1B) begin	
+        if (io_wr_en)	
+          FileReg_27 <= io_wd;	
+        else	
+          FileReg_27 <= _GEN_0;	
+      end
+      if (io_inst[11:7] == 5'h1C) begin	
+        if (io_wr_en)	
+          FileReg_28 <= io_wd;	
+        else	
+          FileReg_28 <= _GEN_0;	
+      end
+      if (io_inst[11:7] == 5'h1D) begin	
+        if (io_wr_en)	
+          FileReg_29 <= io_wd;	
+        else	
+          FileReg_29 <= _GEN_0;	
+      end
+      if (io_inst[11:7] == 5'h1E) begin	
+        if (io_wr_en)	
+          FileReg_30 <= io_wd;	
+        else	
+          FileReg_30 <= _GEN_0;	
+      end
+      if (&(io_inst[11:7])) begin	
+        if (io_wr_en)	
+          FileReg_31 <= io_wd;	
+        else	
+          FileReg_31 <= _GEN_0;	
+      end
     end
   end 
   `ifdef ENABLE_INITIAL_REG_	
@@ -332,28 +462,52 @@ endmodule
 
 module controller(	
   input  [31:0] io_inst,	
-  output        io_alu_a_sel,	
+  output        io_rf_wr_en,	
+                io_rf_wr_sel,	
+                io_alu_a_sel,	
   output [11:0] io_alu_sel,	
   output [31:0] io_imm	
 );
 
   wire isI_type = io_inst[6:0] == 7'h13;	
+  wire is_auipc = io_inst[6:0] == 7'h17;	
+  wire is_lui = io_inst[6:0] == 7'h37;	
   wire io_alu_a_sel_0 = isI_type & io_inst[14:12] == 3'h0;	
+  wire _GEN = io_alu_a_sel_0 | is_auipc;	
+  wire io_rf_wr_en_0 = _GEN | is_lui;	
+  assign io_rf_wr_en = io_rf_wr_en_0;	
+  assign io_rf_wr_sel = io_rf_wr_en_0;	
   assign io_alu_a_sel = io_alu_a_sel_0;	
-  assign io_alu_sel = {11'h0, io_alu_a_sel_0};	
-  assign io_imm = isI_type ? {{20{io_inst[31]}}, io_inst[31:20]} : 32'h0;	
+  assign io_alu_sel = _GEN ? 12'h1 : {5'h0, is_lui, 6'h0};	
+  assign io_imm =
+    is_lui
+      ? {io_inst[31:12], 12'h0}
+      : is_auipc
+          ? {io_inst[31:12], 12'h0}
+          : isI_type ? {{20{io_inst[31]}}, io_inst[31:20]} : 32'h0;	
 endmodule
 
 module inputalu(	
   input  [31:0] io_rs1,	
                 io_imm,	
+                io_pc,	
   input         io_alu_a_sel,	
   output [31:0] io_op1,	
                 io_op2	
 );
 
-  assign io_op1 = io_alu_a_sel ? io_rs1 : 32'h0;	
+  assign io_op1 = io_alu_a_sel ? io_rs1 : io_pc;	
   assign io_op2 = io_imm;	
+endmodule
+
+module inputreg(	
+  input  [31:0] io_alu_out,	
+                io_dm_out,	
+  input         io_rf_wr_sel,	
+  output [31:0] io_wd	
+);
+
+  assign io_wd = io_rf_wr_sel ? io_alu_out : io_dm_out;	
 endmodule
 
 module top(	
@@ -366,32 +520,41 @@ module top(
   output        io_mem_wr	
 );
 
+  wire [31:0] _InputReg_io_wd;	
   wire [31:0] _InputAlu_io_op1;	
   wire [31:0] _InputAlu_io_op2;	
+  wire        _Controller_io_rf_wr_en;	
+  wire        _Controller_io_rf_wr_sel;	
   wire        _Controller_io_alu_a_sel;	
   wire [11:0] _Controller_io_alu_sel;	
   wire [31:0] _Controller_io_imm;	
   wire [31:0] _RegisterFile_io_rd1;	
+  wire [31:0] _Alu_io_rsl;	
+  wire [31:0] _Pc_io_next_pc;	
   pc Pc (	
     .clock      (clock),
     .reset      (reset),
-    .io_next_pc (io_pc)
+    .io_next_pc (_Pc_io_next_pc)
   );
   alu Alu (	
     .io_op1     (_InputAlu_io_op1),	
     .io_op2     (_InputAlu_io_op2),	
     .io_alu_sel (_Controller_io_alu_sel),	
-    .io_rsl     (io_addr)
+    .io_rsl     (_Alu_io_rsl)
   );
   registerfile RegisterFile (	
-    .clock   (clock),
-    .reset   (reset),
-    .io_inst (io_inst),
-    .io_rd1  (_RegisterFile_io_rd1),
-    .io_rd2  (io_data)
+    .clock    (clock),
+    .reset    (reset),
+    .io_inst  (io_inst),
+    .io_wr_en (_Controller_io_rf_wr_en),	
+    .io_wd    (_InputReg_io_wd),	
+    .io_rd1   (_RegisterFile_io_rd1),
+    .io_rd2   (io_data)
   );
   controller Controller (	
     .io_inst      (io_inst),
+    .io_rf_wr_en  (_Controller_io_rf_wr_en),
+    .io_rf_wr_sel (_Controller_io_rf_wr_sel),
     .io_alu_a_sel (_Controller_io_alu_a_sel),
     .io_alu_sel   (_Controller_io_alu_sel),
     .io_imm       (_Controller_io_imm)
@@ -399,10 +562,19 @@ module top(
   inputalu InputAlu (	
     .io_rs1       (_RegisterFile_io_rd1),	
     .io_imm       (_Controller_io_imm),	
+    .io_pc        (_Pc_io_next_pc),	
     .io_alu_a_sel (_Controller_io_alu_a_sel),	
     .io_op1       (_InputAlu_io_op1),
     .io_op2       (_InputAlu_io_op2)
   );
+  inputreg InputReg (	
+    .io_alu_out   (_Alu_io_rsl),	
+    .io_dm_out    (io_inst),
+    .io_rf_wr_sel (_Controller_io_rf_wr_sel),	
+    .io_wd        (_InputReg_io_wd)
+  );
+  assign io_pc = _Pc_io_next_pc;	
+  assign io_addr = _Alu_io_rsl;	
   assign io_mem_wr = 1'h0;	
 endmodule
 

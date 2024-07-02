@@ -36,12 +36,15 @@ class controller extends Module{
     val isI_type = (opcode === "b0010011".U)
     val isS_type = (opcode === "b0100011".U)
     val isB_type = (opcode === "b1100011".U)
-    val isU_type = (opcode === "b0110111".U)
     val isJ_type = (opcode === "b1101111".U)
 
 //提取fun3字段，确定指令
     val fun3 = Wire(UInt(3.W))
     fun3 := io.inst(14, 12)
+
+//auipc和lui指令通过opcode进行区分
+    val is_auipc = (opcode === "b0010111".U)
+    val is_lui = (opcode === "b0110111".U)
 
 //根据指令类型提取imm
     when(isI_type){
@@ -49,21 +52,42 @@ class controller extends Module{
         imm_i := io.inst(31, 20)
         io.imm := Cat(Fill(20, imm_i(11)), imm_i)
     }
+    when(is_auipc){
+        val imm_u = Wire(UInt(20.W))
+        imm_u := io.inst(31, 12)
+        io.imm := (Cat(Fill(12, imm_u(19)), imm_u)) << 12
+    }
+    when(is_lui){
+        val imm_u = Wire(UInt(20.W))
+        imm_u := io.inst(31, 12)
+        io.imm := (Cat(Fill(12, imm_u(19)), imm_u)) << 12
+    }
 
     val is_addi = (fun3 === "b000".U)
-    // val is_ebreak = (io.inst === "b000000000001_00000_000_00000_1110011".U)
 
+//lui
+    when(is_lui){
+        io.alu_sel := "b0100_0000".U
+        io.alu_a_sel := false.B
+        io.alu_b_sel := false.B
+        io.rf_wr_en := true.B
+        io.rf_wr_sel := true.B
+    }
+// auipc
+    when(is_auipc){
+        io.alu_sel := "b0000_0001".U
+        io.alu_a_sel := false.B
+        io.alu_b_sel := false.B
+        io.rf_wr_en := true.B
+        io.rf_wr_sel := true.B
+    }
 
 // addi
     when(isI_type && is_addi){
         io.alu_sel := "b0000_0001".U
         io.alu_a_sel := true.B
         io.alu_b_sel := false.B
+        io.rf_wr_en := true.B
+        io.rf_wr_sel := true.B
     }
-    // when(is_ebreak){
-    //     io.nemutrap := true.B
-    // }
 }
-
-// object controller extends App{
-//     emitVerilog(new controller(), Array("--target-dir", "generated"))
