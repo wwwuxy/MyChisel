@@ -15,7 +15,6 @@ class inputalu extends Module{
         val op2 = Output(UInt(32.W))
     })
 
-
     io.op1 := Mux(io.alu_a_sel, io.rs1, io.pc)
     io.op2 := Mux(io.alu_b_sel, io.rs2, io.imm)
 }

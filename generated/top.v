@@ -43,13 +43,18 @@
 module pc(	
   input         clock,	
                 reset,	
-  output [31:0] io_next_pc	
+                io_jump_en,	
+  input  [31:0] io_jump_pc,	
+  output [31:0] io_dnpc,	
+                io_next_pc	
 );
 
   reg [31:0] pc;	
   always @(posedge clock) begin	
     if (reset)	
       pc <= 32'h80000000;	
+    else if (io_jump_en)	
+      pc <= io_jump_pc;	
     else	
       pc <= pc + 32'h4;	
   end 
@@ -71,13 +76,14 @@ module pc(
       `FIRRTL_AFTER_INITIAL	
     `endif 
   `endif 
+  assign io_dnpc = io_jump_en ? pc + 32'h4 : pc;	
   assign io_next_pc = pc;	
 endmodule
 
 module alu(	
   input  [31:0] io_op1,	
                 io_op2,	
-  input  [11:0] io_alu_sel,	
+  input  [12:0] io_alu_sel,	
   output [31:0] io_rsl	
 );
 
@@ -88,11 +94,11 @@ module alu(
     | (io_alu_sel[2] ? umovl[31:0] : 32'h0)
     | (io_alu_sel[3] ? io_op1 >> io_op2[4:0] : 32'h0)
     | (io_alu_sel[4] ? {1'h0, {4{io_op1[31]}}, _smovr_T_2[26:0]} : 32'h0)
-    | (io_alu_sel[5] ? {31'h0, io_op1 == 32'h0} : 32'h0)
-    | (io_alu_sel[6] ? io_op2 : 32'h0) | (io_alu_sel[7] ? io_op1 & io_op2 : 32'h0)
+    | (io_alu_sel[5] ? ~io_op1 : 32'h0) | (io_alu_sel[6] ? io_op2 : 32'h0)
+    | (io_alu_sel[7] ? io_op1 & io_op2 : 32'h0)
     | (io_alu_sel[8] ? io_op1 | io_op2 : 32'h0)
     | (io_alu_sel[9] ? io_op1 ^ io_op2 : 32'h0)
-    | (io_alu_sel[10] ? {31'h0, io_op1 < io_op2} : 32'h0)
+    | (io_alu_sel[10] ? {31'h0, $signed(io_op1) < $signed(io_op2)} : 32'h0)
     | (io_alu_sel[11] ? {31'h0, io_op1 == io_op2} : 32'h0);	
 endmodule
 
@@ -463,28 +469,35 @@ endmodule
 module controller(	
   input  [31:0] io_inst,	
   output        io_rf_wr_en,	
-                io_rf_wr_sel,	
-                io_alu_a_sel,	
-  output [11:0] io_alu_sel,	
+  output [2:0]  io_rf_wr_sel,	
+  output        io_alu_a_sel,	
+  output [12:0] io_alu_sel,	
+  output        io_jump_en,	
   output [31:0] io_imm	
 );
 
   wire isI_type = io_inst[6:0] == 7'h13;	
   wire is_auipc = io_inst[6:0] == 7'h17;	
   wire is_lui = io_inst[6:0] == 7'h37;	
-  wire io_alu_a_sel_0 = isI_type & io_inst[14:12] == 3'h0;	
-  wire _GEN = io_alu_a_sel_0 | is_auipc;	
-  wire io_rf_wr_en_0 = _GEN | is_lui;	
-  assign io_rf_wr_en = io_rf_wr_en_0;	
-  assign io_rf_wr_sel = io_rf_wr_en_0;	
-  assign io_alu_a_sel = io_alu_a_sel_0;	
-  assign io_alu_sel = _GEN ? 12'h1 : {5'h0, is_lui, 6'h0};	
+  wire is_jal = io_inst[6:0] == 7'h6F;	
+  wire is_jalr = io_inst[6:0] == 7'h67;	
+  wire _GEN = is_jal | is_auipc;	
+  wire _GEN_0 = isI_type & io_inst[14:12] == 3'h0;	
+  assign io_rf_wr_en = _GEN_0 | is_jalr | _GEN | is_lui;	
+  assign io_rf_wr_sel =
+    _GEN_0 ? 3'h1 : is_jalr | is_jal ? 3'h4 : is_auipc ? 3'h1 : {is_lui, 2'h0};	
+  assign io_alu_a_sel = _GEN_0 | is_jalr;	
+  assign io_alu_sel =
+    _GEN_0 ? 13'h1 : is_jalr ? 13'h100 : _GEN ? 13'h1 : {6'h0, is_lui, 6'h0};	
+  assign io_jump_en = is_jalr | is_jal;	
   assign io_imm =
-    is_lui
-      ? {io_inst[31:12], 12'h0}
-      : is_auipc
+    is_jal
+      ? {{12{io_inst[31]}}, io_inst[19:12], io_inst[20], io_inst[30:21], 1'h0}
+      : is_lui
           ? {io_inst[31:12], 12'h0}
-          : isI_type ? {{20{io_inst[31]}}, io_inst[31:20]} : 32'h0;	
+          : is_auipc
+              ? {io_inst[31:12], 12'h0}
+              : isI_type ? {{20{io_inst[31]}}, io_inst[31:20]} : 32'h0;	
 endmodule
 
 module inputalu(	
@@ -503,11 +516,14 @@ endmodule
 module inputreg(	
   input  [31:0] io_alu_out,	
                 io_dm_out,	
-  input         io_rf_wr_sel,	
+  input  [2:0]  io_rf_wr_sel,	
+  input  [31:0] io_storepc,	
   output [31:0] io_wd	
 );
 
-  assign io_wd = io_rf_wr_sel ? io_alu_out : io_dm_out;	
+  assign io_wd =
+    (io_rf_wr_sel[0] ? io_alu_out : 32'h0) | (io_rf_wr_sel[1] ? io_dm_out : 32'h0)
+    | (io_rf_wr_sel[2] ? io_storepc : 32'h0);	
 endmodule
 
 module top(	
@@ -517,23 +533,29 @@ module top(
   output [31:0] io_pc,	
                 io_addr,	
                 io_data,	
-  output        io_mem_wr	
+  output        io_mem_wr,	
+  output [31:0] io_imm	
 );
 
   wire [31:0] _InputReg_io_wd;	
   wire [31:0] _InputAlu_io_op1;	
   wire [31:0] _InputAlu_io_op2;	
   wire        _Controller_io_rf_wr_en;	
-  wire        _Controller_io_rf_wr_sel;	
+  wire [2:0]  _Controller_io_rf_wr_sel;	
   wire        _Controller_io_alu_a_sel;	
-  wire [11:0] _Controller_io_alu_sel;	
+  wire [12:0] _Controller_io_alu_sel;	
+  wire        _Controller_io_jump_en;	
   wire [31:0] _Controller_io_imm;	
   wire [31:0] _RegisterFile_io_rd1;	
   wire [31:0] _Alu_io_rsl;	
+  wire [31:0] _Pc_io_dnpc;	
   wire [31:0] _Pc_io_next_pc;	
   pc Pc (	
     .clock      (clock),
     .reset      (reset),
+    .io_jump_en (_Controller_io_jump_en),	
+    .io_jump_pc (_Alu_io_rsl),	
+    .io_dnpc    (_Pc_io_dnpc),
     .io_next_pc (_Pc_io_next_pc)
   );
   alu Alu (	
@@ -557,6 +579,7 @@ module top(
     .io_rf_wr_sel (_Controller_io_rf_wr_sel),
     .io_alu_a_sel (_Controller_io_alu_a_sel),
     .io_alu_sel   (_Controller_io_alu_sel),
+    .io_jump_en   (_Controller_io_jump_en),
     .io_imm       (_Controller_io_imm)
   );
   inputalu InputAlu (	
@@ -571,10 +594,12 @@ module top(
     .io_alu_out   (_Alu_io_rsl),	
     .io_dm_out    (io_inst),
     .io_rf_wr_sel (_Controller_io_rf_wr_sel),	
+    .io_storepc   (_Pc_io_dnpc),	
     .io_wd        (_InputReg_io_wd)
   );
   assign io_pc = _Pc_io_next_pc;	
   assign io_addr = _Alu_io_rsl;	
   assign io_mem_wr = 1'h0;	
+  assign io_imm = _Controller_io_imm;	
 endmodule
 

@@ -28,6 +28,7 @@ class top extends Module{
         val addr = Output(UInt(32.W))
         val data = Output(UInt(32.W))
         val mem_wr = Output(Bool())
+        val imm = Output(UInt(32.W))
     })
     // io.nemutrap := false.B
 
@@ -66,6 +67,7 @@ class top extends Module{
     RegisterFile.io.wd := InputReg.io.wd
     InputReg.io.alu_out := Alu.io.rsl
     InputReg.io.dm_out := io.inst
+    InputReg.io.storepc := Pc.io.dnpc
 
 //RegisterFile
     RegisterFile.io.inst := io.inst
@@ -80,6 +82,8 @@ class top extends Module{
     io.data := RegisterFile.io.rd2
     io.mem_wr := Controller.io.mem_wr
 
+//for debug
+    io.imm := Controller.io.imm
 }
  
 
