@@ -534,7 +534,7 @@ module top(
                 io_addr,	
                 io_data,	
   output        io_mem_wr,	
-  output [31:0] io_imm	
+  output [31:0] io_nextpc	
 );
 
   wire [31:0] _InputReg_io_wd;	
@@ -600,6 +600,6 @@ module top(
   assign io_pc = _Pc_io_next_pc;	
   assign io_addr = _Alu_io_rsl;	
   assign io_mem_wr = 1'h0;	
-  assign io_imm = _Controller_io_imm;	
+  assign io_nextpc = _Alu_io_rsl;	
 endmodule
 

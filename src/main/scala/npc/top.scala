@@ -28,7 +28,7 @@ class top extends Module{
         val addr = Output(UInt(32.W))
         val data = Output(UInt(32.W))
         val mem_wr = Output(Bool())
-        val imm = Output(UInt(32.W))
+        val nextpc = Output(UInt(32.W))     //for ftrace的call
     })
     // io.nemutrap := false.B
 
@@ -81,9 +81,7 @@ class top extends Module{
     io.addr := Alu.io.rsl
     io.data := RegisterFile.io.rd2
     io.mem_wr := Controller.io.mem_wr
-
-//for debug
-    io.imm := Controller.io.imm
+    io.nextpc := Alu.io.rsl
 }
  
 

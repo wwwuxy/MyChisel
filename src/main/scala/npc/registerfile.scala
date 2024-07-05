@@ -24,7 +24,6 @@ class registerfile extends Module{
     io.rd2 := FileReg(rs2)
 
     FileReg(rd) := Mux(io.wr_en, io.wd, FileReg(rd))
-
 }
 
 // object registerfile extends App{
