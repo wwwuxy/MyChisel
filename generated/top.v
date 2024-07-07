@@ -112,7 +112,6 @@ module registerfile(
                 io_rd2	
 );
 
-  reg  [31:0]       FileReg_0;	
   reg  [31:0]       FileReg_1;	
   reg  [31:0]       FileReg_2;	
   reg  [31:0]       FileReg_3;	
@@ -176,10 +175,9 @@ module registerfile(
      {FileReg_3},
      {FileReg_2},
      {FileReg_1},
-     {FileReg_0}};	
+     {32'h0}};	
   always @(posedge clock) begin	
     if (reset) begin	
-      FileReg_0 <= 32'h0;	
       FileReg_1 <= 32'h0;	
       FileReg_2 <= 32'h0;	
       FileReg_3 <= 32'h0;	
@@ -215,14 +213,6 @@ module registerfile(
     else begin	
       automatic logic [31:0] _GEN_0;	
       _GEN_0 = _GEN[io_inst[11:7]];	
-      if (io_inst[11:7] == 5'h0) begin	
-        if (io_wr_en)	
-          FileReg_0 <= io_wd;	
-        else	
-          FileReg_0 <= _GEN_0;	
-      end
-      else	
-        FileReg_0 <= 32'h0;	
       if (io_inst[11:7] == 5'h1) begin	
         if (io_wr_en)	
           FileReg_1 <= io_wd;	
@@ -424,7 +414,6 @@ module registerfile(
         for (logic [5:0] i = 6'h0; i < 6'h20; i += 6'h1) begin
           _RANDOM[i[4:0]] = `RANDOM;	
         end	
-        FileReg_0 = _RANDOM[5'h0];	
         FileReg_1 = _RANDOM[5'h1];	
         FileReg_2 = _RANDOM[5'h2];	
         FileReg_3 = _RANDOM[5'h3];	

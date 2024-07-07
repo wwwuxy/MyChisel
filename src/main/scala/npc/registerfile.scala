@@ -18,12 +18,12 @@ class registerfile extends Module{
     val rd = io.inst(11, 7)
 //创建一个包含32个32位宽的序列，初始化为0，将该序列转换为一个矢量，再存储
     val FileReg = RegInit(VecInit(Seq.fill(32)(0.U(32.W))))    
-    FileReg(0) := 0.U
 
     io.rd1 := FileReg(rs1)
     io.rd2 := FileReg(rs2)
 
     FileReg(rd) := Mux(io.wr_en, io.wd, FileReg(rd))
+    FileReg(0) := 0.U   
 }
 
 // object registerfile extends App{
