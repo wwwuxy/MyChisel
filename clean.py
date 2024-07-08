@@ -1,8 +1,12 @@
 import re
 
-def clean_verilog(file_path):
+def clean_verilog(file_path, lines_to_remove=0):
     with open(file_path, 'r') as file:
         lines = file.readlines()
+
+    # Remove specified number of lines from the end
+    if lines_to_remove > 0:
+        lines = lines[:-lines_to_remove]
 
     cleaned_lines = []
     for line in lines:
@@ -16,5 +20,6 @@ def clean_verilog(file_path):
 
     with open(file_path, 'w') as file:
         file.write(cleaned_content)
+
 if __name__ == "__main__":
-    clean_verilog('/home/wuxy/chisel/MyChisel/generated/top.v')
+    clean_verilog('/home/wuxy/chisel/MyChisel/generated/top.v', lines_to_remove=3)

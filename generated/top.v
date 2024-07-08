@@ -456,86 +456,140 @@ module registerfile(
 endmodule
 
 module controller(	
-  input  [31:0] io_inst,	
+  input         clock,	
+  input  [31:0] io_alu_out,	
+                io_inst,	
   output        io_rf_wr_en,	
   output [2:0]  io_rf_wr_sel,	
   output        io_alu_a_sel,	
+                io_alu_b_sel,	
+                io_mem_wr_en,	
+                io_mem_rd_en,	
   output [12:0] io_alu_sel,	
   output        io_jump_en,	
   output [31:0] io_imm	
 );
 
-  wire isI_type = io_inst[6:0] == 7'h13;	
-  wire is_auipc = io_inst[6:0] == 7'h17;	
-  wire is_lui = io_inst[6:0] == 7'h37;	
-  wire is_jal = io_inst[6:0] == 7'h6F;	
-  wire is_jalr = io_inst[6:0] == 7'h67;	
-  wire _GEN = is_jal | is_auipc;	
-  wire _GEN_0 = isI_type & io_inst[14:12] == 3'h0;	
-  assign io_rf_wr_en = _GEN_0 | is_jalr | _GEN | is_lui;	
+  reg  [31:0] alu_out;	
+  wire        isI_type = io_inst[6:0] == 7'h13;	
+  wire        isS_type = io_inst[6:0] == 7'h23;	
+  wire        is_load = io_inst[6:0] == 7'h3;	
+  wire        is_auipc = io_inst[6:0] == 7'h17;	
+  wire        is_lui = io_inst[6:0] == 7'h37;	
+  wire        is_jal = io_inst[6:0] == 7'h6F;	
+  wire        is_jalr = io_inst[6:0] == 7'h67;	
+  wire        _GEN = is_jal | is_auipc;	
+  wire        _GEN_0 = io_inst[14:12] == 3'h0;	
+  wire        _GEN_1 = io_inst[6:0] == 7'h63 & _GEN_0;	
+  wire        _GEN_2 = isI_type & _GEN_0;	
+  wire        _GEN_3 = io_inst[14:12] == 3'h2;	
+  wire        io_mem_rd_en_0 = is_load & _GEN_3;	
+  wire        io_mem_wr_en_0 = isS_type & _GEN_3;	
+  wire        _GEN_4 = io_mem_wr_en_0 | io_mem_rd_en_0 | _GEN_2;	
+  always @(posedge clock)	
+    alu_out <= io_alu_out;	
+  `ifdef ENABLE_INITIAL_REG_	
+    `ifdef FIRRTL_BEFORE_INITIAL	
+      `FIRRTL_BEFORE_INITIAL	
+    `endif 
+    initial begin	
+      automatic logic [31:0] _RANDOM[0:0];	
+      `ifdef INIT_RANDOM_PROLOG_	
+        `INIT_RANDOM_PROLOG_	
+      `endif 
+      `ifdef RANDOMIZE_REG_INIT	
+        _RANDOM[/*Zero width*/ 1'b0] = `RANDOM;	
+        alu_out = _RANDOM[/*Zero width*/ 1'b0];	
+      `endif 
+    end 
+    `ifdef FIRRTL_AFTER_INITIAL	
+      `FIRRTL_AFTER_INITIAL	
+    `endif 
+  `endif 
+  assign io_rf_wr_en = io_mem_rd_en_0 | _GEN_2 | is_jalr | _GEN | is_lui;	
   assign io_rf_wr_sel =
-    _GEN_0 ? 3'h1 : is_jalr | is_jal ? 3'h4 : is_auipc ? 3'h1 : {is_lui, 2'h0};	
-  assign io_alu_a_sel = _GEN_0 | is_jalr;	
+    io_mem_rd_en_0
+      ? 3'h2
+      : _GEN_2 ? 3'h1 : is_jalr | is_jal ? 3'h4 : is_auipc ? 3'h1 : {is_lui, 2'h0};	
+  assign io_alu_a_sel = _GEN_4 | (_GEN_1 ? (|alu_out) : is_jalr);	
+  assign io_alu_b_sel = ~_GEN_4 & _GEN_1 & (|alu_out);	
+  assign io_mem_wr_en = io_mem_wr_en_0;	
+  assign io_mem_rd_en = io_mem_rd_en_0;	
   assign io_alu_sel =
-    _GEN_0 ? 13'h1 : is_jalr ? 13'h100 : _GEN ? 13'h1 : {6'h0, is_lui, 6'h0};	
-  assign io_jump_en = is_jalr | is_jal;	
+    _GEN_4
+      ? 13'h1
+      : _GEN_1 ? 13'h2 : is_jalr ? 13'h100 : _GEN ? 13'h1 : {6'h0, is_lui, 6'h0};	
+  assign io_jump_en = _GEN_1 ? ~(|alu_out) | is_jalr | is_jal : is_jalr | is_jal;	
   assign io_imm =
-    is_jal
-      ? {{12{io_inst[31]}}, io_inst[19:12], io_inst[20], io_inst[30:21], 1'h0}
-      : is_lui
-          ? {io_inst[31:12], 12'h0}
-          : is_auipc
-              ? {io_inst[31:12], 12'h0}
-              : isI_type ? {{20{io_inst[31]}}, io_inst[31:20]} : 32'h0;	
+    isS_type
+      ? {{20{io_inst[11]}}, io_inst[31:25], io_inst[11:7]}
+      : is_load
+          ? {{20{io_inst[11]}}, io_inst[31:20]}
+          : is_jalr
+              ? {{20{io_inst[31]}}, io_inst[31:20]}
+              : is_jal
+                  ? {{12{io_inst[31]}}, io_inst[19:12], io_inst[20], io_inst[30:21], 1'h0}
+                  : is_lui
+                      ? {io_inst[31:12], 12'h0}
+                      : is_auipc
+                          ? {io_inst[31:12], 12'h0}
+                          : isI_type ? {{20{io_inst[31]}}, io_inst[31:20]} : 32'h0;	
 endmodule
 
 module inputalu(	
   input  [31:0] io_rs1,	
+                io_rs2,	
                 io_imm,	
                 io_pc,	
   input         io_alu_a_sel,	
+                io_alu_b_sel,	
   output [31:0] io_op1,	
                 io_op2	
 );
 
   assign io_op1 = io_alu_a_sel ? io_rs1 : io_pc;	
-  assign io_op2 = io_imm;	
+  assign io_op2 = io_alu_b_sel ? io_rs2 : io_imm;	
 endmodule
 
+
 module inputreg(	
-  input  [31:0] io_alu_out,	
-                io_dm_out,	
+  input  [31:0] io_dm_out,	
   input  [2:0]  io_rf_wr_sel,	
   input  [31:0] io_storepc,	
   output [31:0] io_wd	
 );
 
   assign io_wd =
-    (io_rf_wr_sel[0] ? io_alu_out : 32'h0) | (io_rf_wr_sel[1] ? io_dm_out : 32'h0)
+    (io_rf_wr_sel[0] | io_rf_wr_sel[1] ? io_dm_out : 32'h0)
     | (io_rf_wr_sel[2] ? io_storepc : 32'h0);	
 endmodule
 
 module top(	
   input         clock,	
                 reset,	
-  input  [31:0] io_inst,	
-  output [31:0] io_pc,	
+  output [31:0] io_inst,	
+                io_pc,	
                 io_addr,	
                 io_data,	
-  output        io_mem_wr,	
-  output [31:0] io_nextpc	
+                io_nextpc	
 );
 
   wire [31:0] _InputReg_io_wd;	
+  wire [31:0] _Mem_inst;	
+  wire [31:0] _Mem_dm_out;	
   wire [31:0] _InputAlu_io_op1;	
   wire [31:0] _InputAlu_io_op2;	
   wire        _Controller_io_rf_wr_en;	
   wire [2:0]  _Controller_io_rf_wr_sel;	
   wire        _Controller_io_alu_a_sel;	
+  wire        _Controller_io_alu_b_sel;	
+  wire        _Controller_io_mem_wr_en;	
+  wire        _Controller_io_mem_rd_en;	
   wire [12:0] _Controller_io_alu_sel;	
   wire        _Controller_io_jump_en;	
   wire [31:0] _Controller_io_imm;	
   wire [31:0] _RegisterFile_io_rd1;	
+  wire [31:0] _RegisterFile_io_rd2;	
   wire [31:0] _Alu_io_rsl;	
   wire [31:0] _Pc_io_dnpc;	
   wire [31:0] _Pc_io_next_pc;	
@@ -556,39 +610,94 @@ module top(
   registerfile RegisterFile (	
     .clock    (clock),
     .reset    (reset),
-    .io_inst  (io_inst),
+    .io_inst  (_Mem_inst),	
     .io_wr_en (_Controller_io_rf_wr_en),	
     .io_wd    (_InputReg_io_wd),	
     .io_rd1   (_RegisterFile_io_rd1),
-    .io_rd2   (io_data)
+    .io_rd2   (_RegisterFile_io_rd2)
   );
   controller Controller (	
-    .io_inst      (io_inst),
+    .clock        (clock),
+    .io_alu_out   (_Alu_io_rsl),	
+    .io_inst      (_Mem_inst),	
     .io_rf_wr_en  (_Controller_io_rf_wr_en),
     .io_rf_wr_sel (_Controller_io_rf_wr_sel),
     .io_alu_a_sel (_Controller_io_alu_a_sel),
+    .io_alu_b_sel (_Controller_io_alu_b_sel),
+    .io_mem_wr_en (_Controller_io_mem_wr_en),
+    .io_mem_rd_en (_Controller_io_mem_rd_en),
     .io_alu_sel   (_Controller_io_alu_sel),
     .io_jump_en   (_Controller_io_jump_en),
     .io_imm       (_Controller_io_imm)
   );
   inputalu InputAlu (	
     .io_rs1       (_RegisterFile_io_rd1),	
+    .io_rs2       (_RegisterFile_io_rd2),	
     .io_imm       (_Controller_io_imm),	
     .io_pc        (_Pc_io_next_pc),	
     .io_alu_a_sel (_Controller_io_alu_a_sel),	
+    .io_alu_b_sel (_Controller_io_alu_b_sel),	
     .io_op1       (_InputAlu_io_op1),
     .io_op2       (_InputAlu_io_op2)
   );
+  Memory Mem (	
+    .pc      (_Pc_io_next_pc),	
+    .alu_out (_Alu_io_rsl),	
+    .data    (_RegisterFile_io_rd2),	
+    .wr_en   (_Controller_io_mem_wr_en),	
+    .rd_en   (_Controller_io_mem_rd_en),	
+    .inst    (_Mem_inst),
+    .dm_out  (_Mem_dm_out)
+  );
   inputreg InputReg (	
-    .io_alu_out   (_Alu_io_rsl),	
-    .io_dm_out    (io_inst),
+    .io_dm_out    (_Mem_dm_out),	
     .io_rf_wr_sel (_Controller_io_rf_wr_sel),	
     .io_storepc   (_Pc_io_dnpc),	
     .io_wd        (_InputReg_io_wd)
   );
+  assign io_inst = _Mem_inst;	
   assign io_pc = _Pc_io_next_pc;	
   assign io_addr = _Alu_io_rsl;	
-  assign io_mem_wr = 1'h0;	
+  assign io_data = _RegisterFile_io_rd2;	
   assign io_nextpc = _Alu_io_rsl;	
+endmodule
+
+
+
+module Memory(
+    input clk,
+    input [31:0] pc,
+    input [31:0] alu_out,
+    input [31:0] data,
+    input wr_en,    
+    input rd_en,    
+    output [31:0] inst,
+    output reg [31:0] dm_out
+);
+    wire [31:0] len;
+    assign len = 32'd4;
+
+    import "DPI-C" function int mem_read(input int pc, int len);
+
+    import "DPI-C" function void mem_write(input int addr, int len, input int data);
+
+    assign inst = mem_read(pc, len);
+
+    always @(*) begin
+        
+        if (rd_en) begin
+            $display("rd_en is %d", rd_en);
+            dm_out = mem_read(alu_out, len);
+        end
+        else begin
+            dm_out = alu_out;
+        end
+      
+        if (wr_en) begin
+            mem_write(alu_out, len, data);
+        end
+    end
+
+
 endmodule
 
