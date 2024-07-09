@@ -184,4 +184,28 @@ class controller extends Module{
         io.rf_wr_en := true.B
         io.rf_wr_sel := "b010".U
     }
+//sltu
+    when(isR_type && (fun3 === "b011".U) && (fun7 === "b0000000".U)){
+        io.alu_sel := "b001_00000_00000".U
+        io.alu_a_sel := true.B
+        io.alu_b_sel := true.B
+        io.rf_wr_en := true.B
+        io.rf_wr_sel := "b010".U
+    }
+//xor
+    when(isR_type && (fun3 === "b100".U) && (fun7 === "b0000000".U)){
+        io.alu_sel := "b000_10000_00000".U
+        io.alu_a_sel := true.B
+        io.alu_b_sel := true.B
+        io.rf_wr_en := true.B
+        io.rf_wr_sel := "b010".U
+    }
+//or
+    when(isR_type && (fun3 === "b110".U) && (fun7 === "b0000000".U)){
+        io.alu_sel := "b000_01000_00000".U
+        io.alu_a_sel := true.B
+        io.alu_b_sel := true.B
+        io.rf_wr_en := true.B
+        io.rf_wr_sel := "b010".U
+    }
 }

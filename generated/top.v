@@ -476,6 +476,7 @@ module controller(
   output [31:0] io_imm	
 );
 
+  wire isR_type = io_inst[6:0] == 7'h33;	
   wire isI_type = io_inst[6:0] == 7'h13;	
   wire isS_type = io_inst[6:0] == 7'h23;	
   wire isB_type = io_inst[6:0] == 7'h63;	
@@ -493,38 +494,51 @@ module controller(
   wire io_mem_wr_en_0 = isS_type & _GEN_3;	
   wire _GEN_4 = isI_type & _GEN;	
   wire _GEN_5 = _GEN_4 | io_mem_wr_en_0 | io_mem_rd_en_0;	
-  wire _GEN_6 = isI_type & io_inst[14:12] == 3'h3;	
-  wire _GEN_7 = io_inst[6:0] == 7'h33 & _GEN;	
-  wire _GEN_8 = _GEN_7 & io_inst[31:25] == 7'h0;	
-  wire _GEN_9 = _GEN_7 & io_inst[31:25] == 7'h20;	
-  wire _GEN_10 = _GEN_9 | _GEN_8;	
+  wire _GEN_6 = io_inst[14:12] == 3'h3;	
+  wire _GEN_7 = isI_type & _GEN_6;	
+  wire _GEN_8 = isR_type & _GEN;	
+  wire _GEN_9 = io_inst[31:25] == 7'h0;	
+  wire _GEN_10 = _GEN_8 & _GEN_9;	
+  wire _GEN_11 = _GEN_8 & io_inst[31:25] == 7'h20;	
+  wire _GEN_12 = isR_type & _GEN_6 & _GEN_9;	
+  wire _GEN_13 = isR_type & io_inst[14:12] == 3'h4 & _GEN_9;	
+  wire _GEN_14 = isR_type & io_inst[14:12] == 3'h6 & _GEN_9;	
+  wire _GEN_15 = _GEN_14 | _GEN_13 | _GEN_12 | _GEN_11 | _GEN_10;	
   assign io_rf_wr_en =
-    _GEN_9 | _GEN_8 | _GEN_6 | _GEN_4 | io_mem_rd_en_0 | is_jalr | is_jal | is_auipc
-    | is_lui;	
+    _GEN_14 | _GEN_13 | _GEN_12 | _GEN_11 | _GEN_10 | _GEN_7 | _GEN_4 | io_mem_rd_en_0
+    | is_jalr | is_jal | is_auipc | is_lui;	
   assign io_rf_wr_sel =
-    _GEN_10
+    _GEN_15
       ? 3'h2
-      : _GEN_6 | _GEN_4
+      : _GEN_7 | _GEN_4
           ? 3'h1
           : io_mem_rd_en_0
               ? 3'h2
               : is_jalr | is_jal ? 3'h4 : is_auipc ? 3'h1 : {is_lui, 2'h0};	
   assign io_alu_a_sel =
-    _GEN_9 | _GEN_8 | _GEN_6 | _GEN_4 | io_mem_wr_en_0 | io_mem_rd_en_0 | _GEN_2
-    | is_jalr;	
-  assign io_alu_b_sel = _GEN_10 | ~(_GEN_6 | _GEN_5) & (_GEN_1 | _GEN_0);	
+    _GEN_14 | _GEN_13 | _GEN_12 | _GEN_11 | _GEN_10 | _GEN_7 | _GEN_4 | io_mem_wr_en_0
+    | io_mem_rd_en_0 | _GEN_2 | is_jalr;	
+  assign io_alu_b_sel = _GEN_15 | ~(_GEN_7 | _GEN_5) & (_GEN_1 | _GEN_0);	
   assign io_mem_wr_en = io_mem_wr_en_0;	
   assign io_mem_rd_en = io_mem_rd_en_0;	
   assign io_alu_sel =
-    _GEN_9
-      ? 13'h2
-      : _GEN_8
-          ? 13'h1
-          : _GEN_6
+    _GEN_14
+      ? 13'h100
+      : _GEN_13
+          ? 13'h200
+          : _GEN_12
               ? 13'h400
-              : _GEN_5
-                  ? 13'h1
-                  : _GEN_2 ? 13'h1000 : is_jalr | is_auipc ? 13'h1 : {6'h0, is_lui, 6'h0};	
+              : _GEN_11
+                  ? 13'h2
+                  : _GEN_10
+                      ? 13'h1
+                      : _GEN_7
+                          ? 13'h400
+                          : _GEN_5
+                              ? 13'h1
+                              : _GEN_2
+                                  ? 13'h1000
+                                  : is_jalr | is_auipc ? 13'h1 : {6'h0, is_lui, 6'h0};	
   assign io_jump_no_jalr =
     _GEN_1 ? io_alu_op1 != io_alu_op2 : _GEN_0 ? io_alu_op1 == io_alu_op2 : is_jal;	
   assign io_jump_jalr = is_jalr;	
