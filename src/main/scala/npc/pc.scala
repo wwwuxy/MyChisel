@@ -5,21 +5,26 @@ import chisel3.util._
 
 class pc extends Module{
     val io = IO(new Bundle {
-        val jump_en = Input(Bool())
+        val jump_no_jalr = Input(Bool())
         val jump_pc = Input(UInt(32.W))
+        val jump_jalr = Input(Bool())
+        val imm = Input(UInt(32.W))
         val dnpc = Output(UInt(32.W))
         val next_pc = Output(UInt(32.W))
     })
 //pc复位值为0x80000000
     val pc = RegInit("h8000_0000".U(32.W))
     io.next_pc := pc
-    io.dnpc := pc   //初始化，只有在jump_en为1时，dnpc的值才有意义，用来保存跳转指令的下一条指令地址
+    io.dnpc := pc   //初始化，只有在jump时，dnpc的值才有意义，用来保存跳转指令的下一条指令地址
 
-    when(io.jump_en){
+    when(io.jump_jalr){
         io.dnpc := pc + 4.U
-        pc := io.jump_pc
+        pc := Cat(io.jump_pc(31,1), 0.U(1.W))
+    }.elsewhen(io.jump_no_jalr){
+        io.dnpc := pc + 4.U
+        pc := pc + io.imm 
     }.otherwise{
-        pc := pc + 4.U  //因为在testbench中，内存是按四字节为单位的，所以这里+1
+        pc := pc + 4.U
     }
 }
 

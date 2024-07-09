@@ -24,21 +24,19 @@ class alu extends Module{
     val umovl = op1_unsigned << op2_unsigned(4, 0)
     val umovr = op1_unsigned >> op2_unsigned(4, 0)
     val smovr = Cat(Fill(4, op1_unsigned(31)), (op1_unsigned >> op2_unsigned)(26, 0))     //算术右移
+    
     val not = ~op1_unsigned
     val rd2 = op2_unsigned
     val and = op1_unsigned & op2_unsigned
     val or = op1_unsigned | op2_unsigned
     val xor = op1_unsigned ^ op2_unsigned
-    val cmp = Mux((op1_signed < op2_signed), 1.S, 0.S).asUInt
-    val eql = Mux((op1_signed === op2_signed), 1.S, 0.S).asUInt
-    val jalr = ((op1_signed + op2_signed).asUInt) & ~1.U
+    
+    val cmpu = Mux((op1_unsigned < op2_unsigned), 1.U, 0.U).asUInt
+    val cmp = Mux((op1_signed < op2_signed), 1.U, 0.U).asUInt
+    val eql = Mux((op1_unsigned === op2_unsigned), 1.U, 0.U).asUInt
 
-    val res = VecInit(Seq(add, sub, umovl, umovr, smovr, not, rd2, and, or, xor, cmp, eql, jalr))
+    val res = VecInit(Seq(add, sub, umovl, umovr, smovr, not, rd2, and, or, xor, cmpu, cmp, eql))
 
     io.rsl := Mux1H(io.alu_sel, res)
 }
-
-// object alu extends App{
-//     emitVerilog(new alu(), Array("--target-dir", "generated"))
-// }
 

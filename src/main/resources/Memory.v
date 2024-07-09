@@ -20,9 +20,7 @@ module Memory(
     always @(*) begin
         
         if (rd_en) begin
-            $display("rd_en is %d", rd_en);
             dm_out = mem_read(alu_out, len);
-            // $display("data_addr: %d, data: %d", alu_out, dm_out);
         end
         else begin
             dm_out = alu_out;

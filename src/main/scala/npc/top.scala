@@ -31,6 +31,9 @@ class top extends Module{
         val addr = Output(UInt(32.W))
         val data = Output(UInt(32.W))
         val nextpc = Output(UInt(32.W))     //for ftrace的call
+        val alu_out =  Output(UInt(32.W))
+        val alu_op1 = Output(UInt(32.W))
+        val alu_op2 = Output(UInt(32.W))
     })
     // io.nemutrap := false.B
 
@@ -43,8 +46,10 @@ class top extends Module{
     val Mem = Module(new Memory())
     val InputReg = Module(new inputreg())
 // PC
-    Pc.io.jump_en := Controller.io.jump_en
+    Pc.io.jump_jalr := Controller.io.jump_jalr
+    Pc.io.jump_no_jalr := Controller.io.jump_no_jalr
     Pc.io.jump_pc := Alu.io.rsl
+    Pc.io.imm := Controller.io.imm
     InputAlu.io.pc := Pc.io.next_pc
 
 //Controller
@@ -55,7 +60,8 @@ class top extends Module{
     InputReg.io.rf_wr_sel := Controller.io.rf_wr_sel
     RegisterFile.io.wr_en := Controller.io.rf_wr_en
     Alu.io.alu_sel := Controller.io.alu_sel
-    Controller.io.alu_out := Alu.io.rsl
+    Controller.io.alu_op1 := InputAlu.io.op1
+    Controller.io.alu_op2 := InputAlu.io.op2
 
 //InputReg
     RegisterFile.io.wd := InputReg.io.wd
@@ -79,12 +85,15 @@ class top extends Module{
     Mem.io.rd_en := Controller.io.mem_rd_en
     Mem.io.pc := Pc.io.next_pc
 
-//for sim_main
+//for dubug
     io.addr := Alu.io.rsl
     io.data := RegisterFile.io.rd2
     io.nextpc := Alu.io.rsl
     io.pc := Pc.io.next_pc
     io.inst := Mem.io.inst
+    io.alu_out := Alu.io.rsl
+    io.alu_op1 := InputAlu.io.op1
+    io.alu_op2 := InputAlu.io.op2
 }
  
 
