@@ -23,7 +23,7 @@ class alu extends Module{
     val sub = (op1_signed - op2_signed).asUInt
     val umovl = op1_unsigned << op2_unsigned(4, 0)
     val umovr = op1_unsigned >> op2_unsigned(4, 0)
-    val smovr = Cat(Fill(4, op1_unsigned(31)), (op1_unsigned >> op2_unsigned)(26, 0))     //算术右移
+    val smovr = (op1_signed >> op2_signed(4, 0)).asUInt   //算术右移
     
     val not = ~op1_unsigned
     val rd2 = op2_unsigned

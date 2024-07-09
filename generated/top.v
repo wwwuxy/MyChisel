@@ -92,12 +92,11 @@ module alu(
 );
 
   wire [62:0] umovl = {31'h0, io_op1} << io_op2[4:0];	
-  wire [31:0] _smovr_T_2 = io_op1 >> io_op2;	
   assign io_rsl =
     (io_alu_sel[0] ? io_op1 + io_op2 : 32'h0) | (io_alu_sel[1] ? io_op1 - io_op2 : 32'h0)
     | (io_alu_sel[2] ? umovl[31:0] : 32'h0)
     | (io_alu_sel[3] ? io_op1 >> io_op2[4:0] : 32'h0)
-    | (io_alu_sel[4] ? {1'h0, {4{io_op1[31]}}, _smovr_T_2[26:0]} : 32'h0)
+    | (io_alu_sel[4] ? $signed($signed(io_op1) >>> io_op2[4:0]) : 32'h0)
     | (io_alu_sel[5] ? ~io_op1 : 32'h0) | (io_alu_sel[6] ? io_op2 : 32'h0)
     | (io_alu_sel[7] ? io_op1 & io_op2 : 32'h0)
     | (io_alu_sel[8] ? io_op1 | io_op2 : 32'h0)
@@ -462,8 +461,7 @@ endmodule
 
 module controller(	
   input  [31:0] io_inst,	
-                io_alu_op1,	
-                io_alu_op2,	
+                io_alu_out,	
   output        io_rf_wr_en,	
   output [2:0]  io_rf_wr_sel,	
   output        io_alu_a_sel,	
@@ -473,7 +471,9 @@ module controller(
   output [12:0] io_alu_sel,	
   output        io_jump_no_jalr,	
                 io_jump_jalr,	
-  output [31:0] io_imm	
+  output [31:0] io_len,	
+                io_imm,	
+  output        io_load_unsign	
 );
 
   wire isR_type = io_inst[6:0] == 7'h33;	
@@ -485,70 +485,149 @@ module controller(
   wire is_lui = io_inst[6:0] == 7'h37;	
   wire is_jal = io_inst[6:0] == 7'h6F;	
   wire is_jalr = io_inst[6:0] == 7'h67;	
-  wire _GEN = io_inst[14:12] == 3'h0;	
-  wire _GEN_0 = isB_type & _GEN;	
-  wire _GEN_1 = isB_type & io_inst[14:12] == 3'h1;	
-  wire _GEN_2 = _GEN_1 | _GEN_0;	
-  wire _GEN_3 = io_inst[14:12] == 3'h2;	
-  wire io_mem_rd_en_0 = is_load & _GEN_3;	
-  wire io_mem_wr_en_0 = isS_type & _GEN_3;	
-  wire _GEN_4 = isI_type & _GEN;	
-  wire _GEN_5 = _GEN_4 | io_mem_wr_en_0 | io_mem_rd_en_0;	
-  wire _GEN_6 = io_inst[14:12] == 3'h3;	
-  wire _GEN_7 = isI_type & _GEN_6;	
-  wire _GEN_8 = isR_type & _GEN;	
-  wire _GEN_9 = io_inst[31:25] == 7'h0;	
-  wire _GEN_10 = _GEN_8 & _GEN_9;	
-  wire _GEN_11 = _GEN_8 & io_inst[31:25] == 7'h20;	
-  wire _GEN_12 = isR_type & _GEN_6 & _GEN_9;	
-  wire _GEN_13 = isR_type & io_inst[14:12] == 3'h4 & _GEN_9;	
-  wire _GEN_14 = isR_type & io_inst[14:12] == 3'h6 & _GEN_9;	
-  wire _GEN_15 = _GEN_14 | _GEN_13 | _GEN_12 | _GEN_11 | _GEN_10;	
+  wire _GEN = io_inst[14:12] == 3'h5;	
+  wire _GEN_0 = io_inst[14:12] == 3'h1;	
+  wire _GEN_1 = io_inst[14:12] == 3'h0;	
+  wire _GEN_2 = isB_type & _GEN_1;	
+  wire _GEN_3 = isB_type & _GEN_0;	
+  wire _GEN_4 = _GEN_3 | _GEN_2;	
+  wire _GEN_5 = io_inst[14:12] == 3'h4;	
+  wire _GEN_6 = isB_type & _GEN_5;	
+  wire _GEN_7 = isB_type & _GEN;	
+  wire _GEN_8 = io_inst[14:12] == 3'h6;	
+  wire _GEN_9 = isB_type & _GEN_8;	
+  wire _GEN_10 = isB_type & (&(io_inst[14:12]));	
+  wire _GEN_11 = is_load & _GEN_0;	
+  wire _GEN_12 = io_inst[14:12] == 3'h2;	
+  wire _GEN_13 = is_load & _GEN_12;	
+  wire _GEN_14 = is_load & _GEN_5;	
+  wire _GEN_15 = is_load & _GEN;	
+  wire _GEN_16 = _GEN_15 | _GEN_14 | _GEN_13 | _GEN_11;	
+  wire _GEN_17 = isS_type & _GEN_1;	
+  wire _GEN_18 = isS_type & _GEN_0;	
+  wire _GEN_19 = isS_type & _GEN_12;	
+  wire _GEN_20 = isI_type & _GEN_1;	
+  wire _GEN_21 = _GEN_20 | _GEN_19 | _GEN_18 | _GEN_17 | _GEN_16;	
+  wire _GEN_22 = io_inst[14:12] == 3'h3;	
+  wire _GEN_23 = isI_type & _GEN_22;	
+  wire _GEN_24 = isI_type & _GEN_5;	
+  wire _GEN_25 = isI_type & (&(io_inst[14:12]));	
+  wire _GEN_26 = io_inst[31:25] == 7'h0;	
+  wire _GEN_27 = isI_type & _GEN_0 & _GEN_26;	
+  wire _GEN_28 = isI_type & _GEN;	
+  wire _GEN_29 = _GEN_28 & _GEN_26;	
+  wire _GEN_30 = io_inst[31:25] == 7'h20;	
+  wire _GEN_31 = _GEN_28 & _GEN_30;	
+  wire _GEN_32 = isR_type & _GEN_1;	
+  wire _GEN_33 = _GEN_32 & _GEN_26;	
+  wire _GEN_34 = _GEN_32 & _GEN_30;	
+  wire _GEN_35 = isR_type & _GEN_0 & _GEN_26;	
+  wire _GEN_36 = isR_type & _GEN_12 & _GEN_26;	
+  wire _GEN_37 = isR_type & _GEN_22 & _GEN_26;	
+  wire _GEN_38 = isR_type & _GEN_5 & _GEN_26;	
+  wire _GEN_39 = isR_type & _GEN;	
+  wire _GEN_40 = _GEN_39 & _GEN_26;	
+  wire _GEN_41 = _GEN_39 & _GEN_30;	
+  wire _GEN_42 = isR_type & _GEN_8 & _GEN_26;	
+  wire _GEN_43 = isR_type & (&(io_inst[14:12])) & _GEN_26;	
+  wire _GEN_44 =
+    _GEN_43 | _GEN_42 | _GEN_41 | _GEN_40 | _GEN_38 | _GEN_37 | _GEN_36 | _GEN_35
+    | _GEN_34 | _GEN_33;	
   assign io_rf_wr_en =
-    _GEN_14 | _GEN_13 | _GEN_12 | _GEN_11 | _GEN_10 | _GEN_7 | _GEN_4 | io_mem_rd_en_0
-    | is_jalr | is_jal | is_auipc | is_lui;	
+    _GEN_43 | _GEN_42 | _GEN_41 | _GEN_40 | _GEN_38 | _GEN_37 | _GEN_36 | _GEN_35
+    | _GEN_34 | _GEN_33 | _GEN_31 | _GEN_29 | _GEN_27 | _GEN_25 | _GEN_24 | _GEN_23
+    | _GEN_20 | _GEN_15 | _GEN_14 | _GEN_13 | _GEN_11 | is_jalr | is_jal | is_auipc
+    | is_lui;	
   assign io_rf_wr_sel =
-    _GEN_15
+    _GEN_44
       ? 3'h2
-      : _GEN_7 | _GEN_4
+      : _GEN_31 | _GEN_29 | _GEN_27 | _GEN_25 | _GEN_24 | _GEN_23 | _GEN_20
           ? 3'h1
-          : io_mem_rd_en_0
-              ? 3'h2
-              : is_jalr | is_jal ? 3'h4 : is_auipc ? 3'h1 : {is_lui, 2'h0};	
+          : _GEN_16 ? 3'h2 : is_jalr | is_jal ? 3'h4 : {2'h0, is_auipc | is_lui};	
   assign io_alu_a_sel =
-    _GEN_14 | _GEN_13 | _GEN_12 | _GEN_11 | _GEN_10 | _GEN_7 | _GEN_4 | io_mem_wr_en_0
-    | io_mem_rd_en_0 | _GEN_2 | is_jalr;	
-  assign io_alu_b_sel = _GEN_15 | ~(_GEN_7 | _GEN_5) & (_GEN_1 | _GEN_0);	
-  assign io_mem_wr_en = io_mem_wr_en_0;	
-  assign io_mem_rd_en = io_mem_rd_en_0;	
+    _GEN_43 | _GEN_42 | _GEN_41 | _GEN_40 | _GEN_38 | _GEN_37 | _GEN_36 | _GEN_35
+    | _GEN_34 | _GEN_33 | _GEN_31 | _GEN_29 | _GEN_27 | _GEN_25 | _GEN_24 | _GEN_23
+    | _GEN_20 | _GEN_19 | _GEN_18 | _GEN_17 | _GEN_15 | _GEN_14 | _GEN_13 | _GEN_11
+    | _GEN_10 | _GEN_9 | _GEN_7 | _GEN_6 | _GEN_4 | is_jalr;	
+  assign io_alu_b_sel =
+    _GEN_44 | ~(_GEN_31 | _GEN_29 | _GEN_27 | _GEN_25 | _GEN_24 | _GEN_23 | _GEN_21)
+    & (_GEN_10 | _GEN_9 | _GEN_7 | _GEN_6 | _GEN_3 | _GEN_2);	
+  assign io_mem_wr_en = _GEN_19 | _GEN_18 | _GEN_17;	
+  assign io_mem_rd_en = _GEN_15 | _GEN_14 | _GEN_13 | _GEN_11;	
   assign io_alu_sel =
-    _GEN_14
-      ? 13'h100
-      : _GEN_13
-          ? 13'h200
-          : _GEN_12
-              ? 13'h400
-              : _GEN_11
-                  ? 13'h2
-                  : _GEN_10
-                      ? 13'h1
-                      : _GEN_7
+    _GEN_43
+      ? 13'h80
+      : _GEN_42
+          ? 13'h100
+          : _GEN_41
+              ? 13'h10
+              : _GEN_40
+                  ? 13'h8
+                  : _GEN_38
+                      ? 13'h200
+                      : _GEN_37
                           ? 13'h400
-                          : _GEN_5
-                              ? 13'h1
-                              : _GEN_2
-                                  ? 13'h1000
-                                  : is_jalr | is_auipc ? 13'h1 : {6'h0, is_lui, 6'h0};	
+                          : _GEN_36
+                              ? 13'h800
+                              : _GEN_35
+                                  ? 13'h4
+                                  : _GEN_34
+                                      ? 13'h2
+                                      : _GEN_33
+                                          ? 13'h1
+                                          : _GEN_31
+                                              ? 13'h10
+                                              : _GEN_29
+                                                  ? 13'h8
+                                                  : _GEN_27
+                                                      ? 13'h4
+                                                      : _GEN_25
+                                                          ? 13'h80
+                                                          : _GEN_24
+                                                              ? 13'h200
+                                                              : _GEN_23
+                                                                  ? 13'h400
+                                                                  : _GEN_21
+                                                                      ? 13'h1
+                                                                      : _GEN_10 | _GEN_9
+                                                                          ? 13'h400
+                                                                          : _GEN_7
+                                                                            | _GEN_6
+                                                                              ? 13'h800
+                                                                              : _GEN_4
+                                                                                  ? 13'h1000
+                                                                                  : is_jalr
+                                                                                    | is_auipc
+                                                                                      ? 13'h1
+                                                                                      : {6'h0,
+                                                                                         is_lui,
+                                                                                         6'h0};	
   assign io_jump_no_jalr =
-    _GEN_1 ? io_alu_op1 != io_alu_op2 : _GEN_0 ? io_alu_op1 == io_alu_op2 : is_jal;	
+    _GEN_10
+      ? ~(|io_alu_out)
+      : _GEN_9
+          ? io_alu_out == 32'h1
+          : _GEN_7
+              ? ~(|io_alu_out)
+              : _GEN_6
+                  ? io_alu_out == 32'h1
+                  : _GEN_3 ? ~(|io_alu_out) : _GEN_2 ? io_alu_out == 32'h1 : is_jal;	
   assign io_jump_jalr = is_jalr;	
+  assign io_len =
+    _GEN_19
+      ? 32'h4
+      : _GEN_18
+          ? 32'h2
+          : _GEN_17
+              ? 32'h1
+              : _GEN_15 ? 32'h2 : _GEN_14 ? 32'h1 : _GEN_13 | ~_GEN_11 ? 32'h4 : 32'h2;	
   assign io_imm =
     isB_type
       ? {{20{io_inst[31]}}, io_inst[7], io_inst[30:25], io_inst[11:8], 1'h0}
       : isS_type
           ? {{20{io_inst[31]}}, io_inst[31:25], io_inst[11:7]}
           : is_load
-              ? {{20{io_inst[11]}}, io_inst[31:20]}
+              ? {{20{io_inst[31]}}, io_inst[31:20]}
               : is_jalr
                   ? {{20{io_inst[31]}}, io_inst[31:20]}
                   : is_jal
@@ -561,7 +640,13 @@ module controller(
                           ? {io_inst[31:12], 12'h0}
                           : is_auipc
                               ? {io_inst[31:12], 12'h0}
-                              : isI_type ? {{20{io_inst[31]}}, io_inst[31:20]} : 32'h0;	
+                              : isI_type & (_GEN | _GEN_0)
+                                  ? {27'h0, io_inst[24:20]}
+                                  : isI_type & io_inst[14:12] != 3'h5
+                                    & io_inst[14:12] != 3'h1
+                                      ? {{20{io_inst[31]}}, io_inst[31:20]}
+                                      : 32'h0;	
+  assign io_load_unsign = _GEN_15 | _GEN_14;	
 endmodule
 
 module inputalu(	
@@ -602,7 +687,8 @@ module top(
                 io_nextpc,	
                 io_alu_out,	
                 io_alu_op1,	
-                io_alu_op2	
+                io_alu_op2,	
+                io_imm	
 );
 
   wire [31:0] _InputReg_io_wd;	
@@ -619,7 +705,9 @@ module top(
   wire [12:0] _Controller_io_alu_sel;	
   wire        _Controller_io_jump_no_jalr;	
   wire        _Controller_io_jump_jalr;	
+  wire [31:0] _Controller_io_len;	
   wire [31:0] _Controller_io_imm;	
+  wire        _Controller_io_load_unsign;	
   wire [31:0] _RegisterFile_io_rd1;	
   wire [31:0] _RegisterFile_io_rd2;	
   wire [31:0] _Alu_io_rsl;	
@@ -652,8 +740,7 @@ module top(
   );
   controller Controller (	
     .io_inst         (_Mem_inst),	
-    .io_alu_op1      (_InputAlu_io_op1),	
-    .io_alu_op2      (_InputAlu_io_op2),	
+    .io_alu_out      (_Alu_io_rsl),	
     .io_rf_wr_en     (_Controller_io_rf_wr_en),
     .io_rf_wr_sel    (_Controller_io_rf_wr_sel),
     .io_alu_a_sel    (_Controller_io_alu_a_sel),
@@ -663,7 +750,9 @@ module top(
     .io_alu_sel      (_Controller_io_alu_sel),
     .io_jump_no_jalr (_Controller_io_jump_no_jalr),
     .io_jump_jalr    (_Controller_io_jump_jalr),
-    .io_imm          (_Controller_io_imm)
+    .io_len          (_Controller_io_len),
+    .io_imm          (_Controller_io_imm),
+    .io_load_unsign  (_Controller_io_load_unsign)
   );
   inputalu InputAlu (	
     .io_rs1       (_RegisterFile_io_rd1),	
@@ -676,13 +765,15 @@ module top(
     .io_op2       (_InputAlu_io_op2)
   );
   Memory Mem (	
-    .pc      (_Pc_io_next_pc),	
-    .alu_out (_Alu_io_rsl),	
-    .data    (_RegisterFile_io_rd2),	
-    .wr_en   (_Controller_io_mem_wr_en),	
-    .rd_en   (_Controller_io_mem_rd_en),	
-    .inst    (_Mem_inst),
-    .dm_out  (_Mem_dm_out)
+    .pc          (_Pc_io_next_pc),	
+    .alu_out     (_Alu_io_rsl),	
+    .data        (_RegisterFile_io_rd2),	
+    .wr_en       (_Controller_io_mem_wr_en),	
+    .rd_en       (_Controller_io_mem_rd_en),	
+    .len         (_Controller_io_len),	
+    .load_unsign (_Controller_io_load_unsign),	
+    .inst        (_Mem_inst),
+    .dm_out      (_Mem_dm_out)
   );
   inputreg InputReg (	
     .io_dm_out    (_Mem_dm_out),	
@@ -698,6 +789,7 @@ module top(
   assign io_alu_out = _Alu_io_rsl;	
   assign io_alu_op1 = _InputAlu_io_op1;	
   assign io_alu_op2 = _InputAlu_io_op2;	
+  assign io_imm = _Controller_io_imm;	
 endmodule
 
 
@@ -708,30 +800,61 @@ module Memory(
     input [31:0] alu_out,
     input [31:0] data,
     input wr_en,    
-    input rd_en,    
+    input rd_en,
+    input [31:0] len,
+    input load_unsign,    
     output [31:0] inst,
     output reg [31:0] dm_out
 );
-    wire [31:0] len;
-    assign len = 32'd4;
 
     import "DPI-C" function int mem_read(input int pc, int len);
 
     import "DPI-C" function void mem_write(input int addr, int len, input int data);
 
-    assign inst = mem_read(pc, len);
+    assign inst = mem_read(pc, 4);
 
     always @(*) begin
-        
+        reg [31:0] temp_data;
         if (rd_en) begin
-            dm_out = mem_read(alu_out, len);
+            if(load_unsign) begin
+                if(len == 1) begin
+                    dm_out = {24'b0, mem_read(alu_out, 1)};
+                end
+                else if(len == 2) begin
+                    dm_out = {16'b0, mem_read(alu_out, 2)};
+                end
+                else if(len == 4) begin
+                    dm_out = mem_read(alu_out, 4);
+                end
+            end
+            else begin
+                temp_data = mem_read(alu_out, len);
+                if(len == 1) begin
+                    dm_out = {{24{temp_data[7]}}, temp_data[7:0]};
+                end
+                else if(len == 2) begin
+                    dm_out = {{16{temp_data[15]}}, temp_data[15:0]};
+                end
+                else if(len == 4) begin
+                    dm_out = mem_read(alu_out, 4);
+                end
+            
+            end
         end
         else begin
             dm_out = alu_out;
         end
       
         if (wr_en) begin
-            mem_write(alu_out, len, data);
+            if(len == 1) begin
+                mem_write(alu_out, 1, data);
+            end
+            else if(len == 2) begin
+                mem_write(alu_out, 2, data);
+            end
+            else if(len == 4) begin
+                mem_write(alu_out, 4, data);
+            end
         end
     end
 

@@ -15,6 +15,8 @@ class Memory extends BlackBox with HasBlackBoxResource {
     val data = Input(UInt(32.W))   
     val wr_en = Input(Bool())
     val rd_en = Input(Bool())
+    val len = Input(UInt(32.W))
+    val load_unsign = Input(Bool())
     val inst = Output(UInt(32.W))
     val dm_out = Output(UInt(32.W))
   })
@@ -34,6 +36,7 @@ class top extends Module{
         val alu_out =  Output(UInt(32.W))
         val alu_op1 = Output(UInt(32.W))
         val alu_op2 = Output(UInt(32.W))
+        val imm = Output(UInt(32.W))
     })
     // io.nemutrap := false.B
 
@@ -60,8 +63,8 @@ class top extends Module{
     InputReg.io.rf_wr_sel := Controller.io.rf_wr_sel
     RegisterFile.io.wr_en := Controller.io.rf_wr_en
     Alu.io.alu_sel := Controller.io.alu_sel
-    Controller.io.alu_op1 := InputAlu.io.op1
-    Controller.io.alu_op2 := InputAlu.io.op2
+    Controller.io.alu_out := Alu.io.rsl
+
 
 //InputReg
     RegisterFile.io.wd := InputReg.io.wd
@@ -84,6 +87,8 @@ class top extends Module{
     Mem.io.wr_en := Controller.io.mem_wr_en
     Mem.io.rd_en := Controller.io.mem_rd_en
     Mem.io.pc := Pc.io.next_pc
+    Mem.io.len := Controller.io.len
+    Mem.io.load_unsign := Controller.io.load_unsign
 
 //for dubug
     io.addr := Alu.io.rsl
@@ -94,6 +99,7 @@ class top extends Module{
     io.alu_out := Alu.io.rsl
     io.alu_op1 := InputAlu.io.op1
     io.alu_op2 := InputAlu.io.op2
+    io.imm := Controller.io.imm
 }
  
 

@@ -7,3 +7,7 @@ sim:
 
 clean:
 	rm -rf $(BUILD)
+
+git:
+	git add .
+	git commit
