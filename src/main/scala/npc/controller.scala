@@ -7,6 +7,8 @@ class controller extends Module{
     val io = IO(new Bundle {
         val inst = Input(UInt(32.W))
         val alu_out = Input(UInt(32.W))
+        val rs1 = Input(UInt(32.W))
+        val rs2 = Input(UInt(32.W))
         val rf_wr_en = Output(Bool())
         val rf_wr_sel = Output(UInt(3.W))
         val alu_a_sel = Output(Bool())
@@ -14,19 +16,30 @@ class controller extends Module{
         val mem_wr_en = Output(Bool())
         val mem_rd_en = Output(Bool())
         val alu_sel = Output(UInt(13.W))
-        val jump_no_jalr = Output(Bool())
+        val jump_en = Output(Bool())
         val jump_jalr = Output(Bool())
         val len = Output(UInt(32.W))
         val imm = Output(UInt(32.W))
         val load_unsign = Output(Bool())
+        val is_ecall = Output(Bool())
+        val is_csr = Output(Bool())
         // val nemutrap = Output(Bool())
     })
 
+// for 比较跳转    
+    val op1_signed = io.rs1.asSInt
+    val op2_signed = io.rs2.asSInt
+    val op1_unsigned = io.rs1
+    val op2_unsigned = io.rs2
+
+
 //inital enable signal
+    io.is_csr := false.B
+    io.is_ecall := false.B
     io.load_unsign := false.B
     io.len := 4.U
     io.rf_wr_en := false.B
-    io.jump_no_jalr := false.B
+    io.jump_en := false.B
     io.jump_jalr := false.B
     io.alu_sel := 0.U
     io.rf_wr_sel := 0.U
@@ -111,7 +124,10 @@ class controller extends Module{
     }
 //jal
     when(is_jal){
-        io.jump_no_jalr := true.B
+        io.jump_en := true.B
+        io.alu_a_sel := false.B
+        io.alu_b_sel := false.B
+        io.alu_sel := "b000_00000_00001".U
         io.rf_wr_en := true.B
         io.rf_wr_sel := "b100".U
     }
@@ -126,45 +142,55 @@ class controller extends Module{
     }
 //beq
     when(isB_type && (fun3 === "b000".U)){
-        io.alu_sel := "b100_00000_00000".U
-        io.alu_a_sel := true.B
-        io.alu_b_sel := true.B
-        io.jump_no_jalr := (io.alu_out === 1.U)
+        io.alu_sel := "b000_00000_00001".U
+        io.alu_a_sel := false.B
+        io.alu_b_sel := false.B
+        io.jump_en := (op1_signed === op2_signed)
     }
 //bne
     when(isB_type && (fun3 === "b001".U)){
-        io.alu_sel := "b100_00000_00000".U
-        io.alu_a_sel := true.B
-        io.alu_b_sel := true.B
-        io.jump_no_jalr := (io.alu_out === 0.U)
+        io.alu_sel := "b000_00000_00001".U
+        io.alu_a_sel := false.B
+        io.alu_b_sel := false.B
+        io.jump_en := (op1_signed =/= op2_signed)
     }
 //blt
     when(isB_type && (fun3 === "b100".U)){
-        io.alu_sel := "b010_00000_00000".U
-        io.alu_a_sel := true.B
-        io.alu_b_sel := true.B
-        io.jump_no_jalr := (io.alu_out === 1.U)
+        io.alu_sel := "b000_00000_00001".U
+        io.alu_a_sel := false.B
+        io.alu_b_sel := false.B
+        io.jump_en := (op1_signed < op2_signed)
     }
 //bge
     when(isB_type && (fun3 === "b101".U)){
-        io.alu_sel := "b010_00000_00000".U
-        io.alu_a_sel := true.B
-        io.alu_b_sel := true.B
-        io.jump_no_jalr := (io.alu_out === 0.U)
+        io.alu_sel := "b000_00000_00001".U
+        io.alu_a_sel := false.B
+        io.alu_b_sel := false.B
+        io.jump_en := (op1_signed >= op2_signed)
     }
 //btlu
     when(isB_type && (fun3 === "b110".U)){
-        io.alu_sel := "b001_00000_00000".U
-        io.alu_a_sel := true.B
-        io.alu_b_sel := true.B
-        io.jump_no_jalr := (io.alu_out === 1.U)
+        io.alu_sel := "b000_00000_00001".U
+        io.alu_a_sel := false.B
+        io.alu_b_sel := false.B
+        io.jump_en := (op1_unsigned < op2_unsigned)
     }
 //bgeu
     when(isB_type && (fun3 === "b111".U)){
-        io.alu_sel := "b001_00000_00000".U
+        io.alu_sel := "b000_00000_00001".U
+        io.alu_a_sel := false.B
+        io.alu_b_sel := false.B
+        io.jump_en := (op1_unsigned >= op2_unsigned)
+    }
+//lb
+    when(is_load && (fun3 === "b000".U)){
         io.alu_a_sel := true.B
-        io.alu_b_sel := true.B
-        io.jump_no_jalr := (io.alu_out === 0.U)
+        io.alu_b_sel := false.B
+        io.alu_sel := "b000_00000_00001".U
+        io.len := 1.U
+        io.mem_rd_en := true.B
+        io.rf_wr_en := true.B
+        io.rf_wr_sel := "b010".U
     }
 //lh
     when(is_load && (fun3 === "b001".U)){
@@ -256,6 +282,14 @@ class controller extends Module{
         io.rf_wr_en := true.B
         io.rf_wr_sel := "b001".U
     }
+//ori
+    when(isI_type && (fun3 === "b110".U)){
+        io.alu_sel := "b000_01000_00000".U
+        io.alu_a_sel := true.B
+        io.alu_b_sel := false.B
+        io.rf_wr_en := true.B
+        io.rf_wr_sel := "b001".U
+    }    
 //andi
    when(isI_type && (fun3 === "b111".U)){
         io.alu_sel := "b000_00100_00000".U
@@ -369,4 +403,10 @@ class controller extends Module{
         io.rf_wr_en := true.B
         io.rf_wr_sel := "b010".U
     }
+//ecall
+    when(io.inst === "h00000073".U){
+        io.is_ecall :=true.B
+    }
+//csrrw、csrrs、csrrc、csrrwi、csrrsi、csrrci
+    io.is_csr := (opcode === "b1110011".U) && (fun3 === "b001".U || fun3 === "b010".U || fun3 === "b011".U || fun3 === "b101".U || fun3 === "b110".U || fun3 === "b111".U)
 }

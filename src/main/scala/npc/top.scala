@@ -50,10 +50,12 @@ class top extends Module{
     val InputReg = Module(new inputreg())
 // PC
     Pc.io.jump_jalr := Controller.io.jump_jalr
-    Pc.io.jump_no_jalr := Controller.io.jump_no_jalr
+    Pc.io.jump_en := Controller.io.jump_en
     Pc.io.jump_pc := Alu.io.rsl
     Pc.io.imm := Controller.io.imm
     InputAlu.io.pc := Pc.io.next_pc
+    Pc.io.mtvec := RegisterFile.io.rd2
+    Pc.io.is_ecall := Controller.io.is_ecall
 
 //Controller
     Controller.io.inst := Mem.io.inst
@@ -64,6 +66,8 @@ class top extends Module{
     RegisterFile.io.wr_en := Controller.io.rf_wr_en
     Alu.io.alu_sel := Controller.io.alu_sel
     Controller.io.alu_out := Alu.io.rsl
+    Controller.io.rs1 := RegisterFile.io.rd1
+    Controller.io.rs2 := RegisterFile.io.rd2
 
 
 //InputReg
@@ -76,6 +80,9 @@ class top extends Module{
     RegisterFile.io.inst := Mem.io.inst
     InputAlu.io.rs1 := RegisterFile.io.rd1
     InputAlu.io.rs2 := RegisterFile.io.rd2
+    RegisterFile.io.is_csr := Controller.io.is_csr
+    RegisterFile.io.is_ecall := Controller.io.is_ecall
+    RegisterFile.io.pc := Pc.io.next_pc
 
 //InputAlu
     Alu.io.op1 := InputAlu.io.op1
