@@ -36,7 +36,6 @@ class IDU extends Module{
 
     val inst = RegInit(0.U(32.W))
     when(state === s_ready){
-        inst := io.in.inst
+        inst := io.in.bits.inst
     }
-//decode....
 }

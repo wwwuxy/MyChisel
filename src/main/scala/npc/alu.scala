@@ -3,21 +3,27 @@ package npc
 import chisel3._
 import chisel3.util._
 
-class alu extends Module{
+class ALU extends Module{
     val io = IO(new Bundle {
-        val op1 = Input(UInt(32.W))
-        val op2 = Input(UInt(32.W))
+        val rs1 = Input(UInt(32.W))
+        val rs2 = Input(UInt(32.W))
+        val imm = Input(UInt(32.W))
+        val alu_a_sel = Input(Bool())
+        val alu_b_sel = Input(Bool())
         val alu_sel = Input(UInt(13.W))
+        val pc = Input(UInt(32.W))
         val rsl = Output(UInt(32.W))
     })
 
+    val op1 = Mux(io.alu_a_sel, io.rs1, io.pc)
+    val op2 = Mux(io.alu_b_sel, io.rs2, io.imm)
     io.rsl := 0.U
 
 //解释为有符号数和无符号数
-    val op1_signed = io.op1.asSInt
-    val op2_signed = io.op2.asSInt
-    val op1_unsigned = io.op1
-    val op2_unsigned = io.op2
+    val op1_signed = op1.asSInt
+    val op2_signed = op2.asSInt
+    val op1_unsigned = op1
+    val op2_unsigned = op2
 
     val add = (op1_signed + op2_signed).asUInt   
     val sub = (op1_signed - op2_signed).asUInt

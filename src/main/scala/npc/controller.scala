@@ -3,10 +3,9 @@ package npc
 import chisel3._
 import chisel3.util._
 
-class controller extends Module{
+class CONTORLLER extends Module{
     val io = IO(new Bundle {
         val inst = Input(UInt(32.W))
-        val alu_out = Input(UInt(32.W))
         val rs1 = Input(UInt(32.W))
         val rs2 = Input(UInt(32.W))
         val rf_wr_en = Output(Bool())
@@ -23,6 +22,7 @@ class controller extends Module{
         val load_unsign = Output(Bool())
         val is_ecall = Output(Bool())
         val is_csr = Output(Bool())
+        val is_mret = Output(Bool())
         // val nemutrap = Output(Bool())
     })
 
@@ -34,6 +34,7 @@ class controller extends Module{
 
 
 //inital enable signal
+    io.is_mret := false.B
     io.is_csr := false.B
     io.is_ecall := false.B
     io.load_unsign := false.B
@@ -48,7 +49,6 @@ class controller extends Module{
     io.alu_b_sel := false.B
     io.mem_wr_en := false.B
     io.mem_rd_en := false.B
-    io.alu_sel := 0.U
     // io.nemutrap := false.B
 
 //根据opcode确定指令类型
@@ -329,7 +329,7 @@ class controller extends Module{
         io.alu_a_sel := true.B
         io.alu_b_sel := true.B
         io.rf_wr_en := true.B
-        io.rf_wr_sel := "b010".U
+        io.rf_wr_sel := "b001".U
     }
 //sub
    when(isR_type && (fun3 === "b000".U) && (fun7 === "b0100000".U)){
@@ -337,7 +337,7 @@ class controller extends Module{
         io.alu_a_sel := true.B
         io.alu_b_sel := true.B
         io.rf_wr_en := true.B
-        io.rf_wr_sel := "b010".U
+        io.rf_wr_sel := "b001".U
     }
 //sll
     when(isR_type && (fun3 === "b001".U) && (fun7 === "b0000000".U)){
@@ -345,7 +345,7 @@ class controller extends Module{
         io.alu_a_sel := true.B
         io.alu_b_sel := true.B
         io.rf_wr_en := true.B
-        io.rf_wr_sel := "b010".U
+        io.rf_wr_sel := "b001".U
     }
 //slt
     when(isR_type && (fun3 === "b010".U) && (fun7 === "b0000000".U)){
@@ -353,7 +353,7 @@ class controller extends Module{
         io.alu_a_sel := true.B
         io.alu_b_sel := true.B
         io.rf_wr_en := true.B
-        io.rf_wr_sel := "b010".U
+        io.rf_wr_sel := "b001".U
     }
 //sltu
     when(isR_type && (fun3 === "b011".U) && (fun7 === "b0000000".U)){
@@ -361,7 +361,7 @@ class controller extends Module{
         io.alu_a_sel := true.B
         io.alu_b_sel := true.B
         io.rf_wr_en := true.B
-        io.rf_wr_sel := "b010".U
+        io.rf_wr_sel := "b001".U
     }
 //xor
     when(isR_type && (fun3 === "b100".U) && (fun7 === "b0000000".U)){
@@ -369,7 +369,7 @@ class controller extends Module{
         io.alu_a_sel := true.B
         io.alu_b_sel := true.B
         io.rf_wr_en := true.B
-        io.rf_wr_sel := "b010".U
+        io.rf_wr_sel := "b001".U
     }
 //srl
     when(isR_type && (fun3 === "b101".U) && (fun7 === "b0000000".U)){
@@ -377,7 +377,7 @@ class controller extends Module{
         io.alu_a_sel := true.B
         io.alu_b_sel := true.B
         io.rf_wr_en := true.B
-        io.rf_wr_sel := "b010".U
+        io.rf_wr_sel := "b001".U
     }
 //sra
     when(isR_type && (fun3 === "b101".U) && (fun7 === "b0100000".U)){
@@ -385,7 +385,7 @@ class controller extends Module{
         io.alu_a_sel := true.B
         io.alu_b_sel := true.B
         io.rf_wr_en := true.B
-        io.rf_wr_sel := "b010".U
+        io.rf_wr_sel := "b001".U
     }
 //or
     when(isR_type && (fun3 === "b110".U) && (fun7 === "b0000000".U)){
@@ -393,7 +393,7 @@ class controller extends Module{
         io.alu_a_sel := true.B
         io.alu_b_sel := true.B
         io.rf_wr_en := true.B
-        io.rf_wr_sel := "b010".U
+        io.rf_wr_sel := "b001".U
     }
 //and 
     when(isR_type && (fun3 === "b111".U) && (fun7 === "b0000000".U)){
@@ -401,11 +401,15 @@ class controller extends Module{
         io.alu_a_sel := true.B
         io.alu_b_sel := true.B
         io.rf_wr_en := true.B
-        io.rf_wr_sel := "b010".U
+        io.rf_wr_sel := "b001".U
     }
 //ecall
     when(io.inst === "h00000073".U){
         io.is_ecall :=true.B
+    }
+//mret
+    when(io.inst === "h30200073".U){
+        io.is_mret := true.B
     }
 //csrrw、csrrs、csrrc、csrrwi、csrrsi、csrrci
     io.is_csr := (opcode === "b1110011".U) && (fun3 === "b001".U || fun3 === "b010".U || fun3 === "b011".U || fun3 === "b101".U || fun3 === "b110".U || fun3 === "b111".U)
