@@ -42,18 +42,54 @@
 
 
 module IFU(	
+  input         clock,	
+                reset,	
   input  [31:0] io_pc,	
   output [31:0] io_out_bits_inst,	
                 io_out_bits_pc	
 );
 
+  wire [31:0] _imem_inst;	
+  reg  [31:0] IR;	
+  reg  [31:0] inst_reg;	
+  always @(posedge clock) begin	
+    if (reset) begin	
+      IR <= 32'h0;	
+      inst_reg <= 32'h0;	
+    end
+    else begin	
+      IR <= io_pc;	
+      inst_reg <= _imem_inst;	
+    end
+  end 
+  `ifdef ENABLE_INITIAL_REG_	
+    `ifdef FIRRTL_BEFORE_INITIAL	
+      `FIRRTL_BEFORE_INITIAL	
+    `endif 
+    initial begin	
+      automatic logic [31:0] _RANDOM[0:1];	
+      `ifdef INIT_RANDOM_PROLOG_	
+        `INIT_RANDOM_PROLOG_	
+      `endif 
+      `ifdef RANDOMIZE_REG_INIT	
+        for (logic [1:0] i = 2'h0; i < 2'h2; i += 2'h1) begin
+          _RANDOM[i[0]] = `RANDOM;	
+        end	
+        IR = _RANDOM[1'h0];	
+        inst_reg = _RANDOM[1'h1];	
+      `endif 
+    end 
+    `ifdef FIRRTL_AFTER_INITIAL	
+      `FIRRTL_AFTER_INITIAL	
+    `endif 
+  `endif 
   Inst_Memory imem (	
     .pc   (io_pc),
-    .inst (io_out_bits_inst)
+    .inst (_imem_inst)
   );
-  assign io_out_bits_pc = io_pc;	
+  assign io_out_bits_inst = inst_reg;	
+  assign io_out_bits_pc = IR;	
 endmodule
-
 
 module CONTORLLER(	
   input  [31:0] io_inst,	
@@ -73,7 +109,8 @@ module CONTORLLER(
   output        io_load_unsign,	
                 io_is_ecall,	
                 io_is_csr,	
-                io_is_mret	
+                io_is_mret,	
+                io_is_cmp	
 );
 
   wire isR_type = io_inst[6:0] == 7'h33;	
@@ -255,6 +292,7 @@ module CONTORLLER(
     & (_io_is_csr_T_1 | _io_is_csr_T_2 | _io_is_csr_T_4 | _io_is_csr_T_6 | _io_is_csr_T_8
        | (&(io_inst[14:12])));	
   assign io_is_mret = io_inst == 32'h30200073;	
+  assign io_is_cmp = _GEN_7 | _GEN_6 | _GEN_5 | _GEN_4 | _GEN_2 | _GEN_1;	
 endmodule
 
 module REGISTERFILE(	
@@ -344,6 +382,7 @@ module REGISTERFILE(
      {FileReg_1},
      {32'h0}};	
   wire [31:0]       _GEN_0 = _GEN[io_inst[19:15]];	
+  wire              _GEN_1 = io_is_ecall | io_is_mret | io_is_csr;	
   always @(posedge clock) begin	
     if (reset) begin	
       FileReg_1 <= 32'h0;	
@@ -383,426 +422,414 @@ module REGISTERFILE(
       CsrReg_3 <= 32'h0;	
     end
     else begin	
-      automatic logic [31:0] _CsrReg_0_T_3;	
-      automatic logic [31:0] _CsrReg_0_T_7;	
-      automatic logic        _GEN_1;	
-      automatic logic        _GEN_2;	
-      automatic logic        _GEN_3;	
-      automatic logic        _GEN_4;	
-      automatic logic        _GEN_5;	
-      automatic logic        _GEN_6;	
-      automatic logic        _GEN_7;	
-      automatic logic        _GEN_8;	
-      automatic logic        _GEN_9;	
-      automatic logic        _GEN_10;	
-      automatic logic        _GEN_11;	
-      automatic logic        _GEN_12;	
-      automatic logic        _GEN_13;	
-      automatic logic        _GEN_14;	
-      automatic logic        _GEN_15;	
-      automatic logic        _GEN_16;	
-      automatic logic        _GEN_17;	
-      automatic logic        _GEN_18;	
-      automatic logic        _GEN_19;	
-      automatic logic        _GEN_20;	
-      automatic logic        _GEN_21;	
-      automatic logic        _GEN_22;	
-      automatic logic        _GEN_23;	
-      automatic logic        _GEN_24;	
-      automatic logic        _GEN_25;	
-      automatic logic        _GEN_26;	
-      automatic logic        _GEN_27;	
-      automatic logic        _GEN_28;	
-      automatic logic        _GEN_29;	
-      automatic logic        _GEN_30;	
-      _CsrReg_0_T_3 = CsrReg_0 & 32'hFFFFFFFE;	
-      _CsrReg_0_T_7 = {CsrReg_0[31:8], CsrReg_0[7:0] | 8'h80};	
-      _GEN_1 = io_inst[11:7] == 5'h1;	
-      _GEN_2 = io_inst[11:7] == 5'h2;	
-      _GEN_3 = io_inst[11:7] == 5'h3;	
-      _GEN_4 = io_inst[11:7] == 5'h4;	
-      _GEN_5 = io_inst[11:7] == 5'h5;	
-      _GEN_6 = io_inst[11:7] == 5'h6;	
-      _GEN_7 = io_inst[11:7] == 5'h7;	
-      _GEN_8 = io_inst[11:7] == 5'h8;	
-      _GEN_9 = io_inst[11:7] == 5'h9;	
-      _GEN_10 = io_inst[11:7] == 5'hA;	
-      _GEN_11 = io_inst[11:7] == 5'hB;	
-      _GEN_12 = io_inst[11:7] == 5'hC;	
-      _GEN_13 = io_inst[11:7] == 5'hD;	
-      _GEN_14 = io_inst[11:7] == 5'hE;	
-      _GEN_15 = io_inst[11:7] == 5'hF;	
-      _GEN_16 = io_inst[11:7] == 5'h10;	
-      _GEN_17 = io_inst[11:7] == 5'h11;	
-      _GEN_18 = io_inst[11:7] == 5'h12;	
-      _GEN_19 = io_inst[11:7] == 5'h13;	
-      _GEN_20 = io_inst[11:7] == 5'h14;	
-      _GEN_21 = io_inst[11:7] == 5'h15;	
-      _GEN_22 = io_inst[11:7] == 5'h16;	
-      _GEN_23 = io_inst[11:7] == 5'h17;	
-      _GEN_24 = io_inst[11:7] == 5'h18;	
-      _GEN_25 = io_inst[11:7] == 5'h19;	
-      _GEN_26 = io_inst[11:7] == 5'h1A;	
-      _GEN_27 = io_inst[11:7] == 5'h1B;	
-      _GEN_28 = io_inst[11:7] == 5'h1C;	
-      _GEN_29 = io_inst[11:7] == 5'h1D;	
-      _GEN_30 = io_inst[11:7] == 5'h1E;	
-      if (io_is_csr) begin	
-        automatic logic [1:0]       csr_sel;	
-        automatic logic             _GEN_31 = io_inst[14:12] == 3'h1;	
-        automatic logic [3:0][31:0] _GEN_32;	
-        automatic logic             _GEN_33;	
-        automatic logic             _GEN_34;	
-        automatic logic             _GEN_35;	
-        automatic logic             _GEN_36;	
-        automatic logic             _GEN_37;	
-        automatic logic             _GEN_38;	
-        csr_sel =
-          io_inst[31:20] == 12'h300
-            ? 2'h0
-            : io_inst[31:20] == 12'h305
-                ? 2'h1
-                : io_inst[31:20] == 12'h341 ? 2'h2 : {2{io_inst[31:20] == 12'h342}};	
-        _GEN_32 = {{CsrReg_3}, {CsrReg_2}, {CsrReg_1}, {CsrReg_0}};	
-        _GEN_33 = csr_sel == 2'h0;	
-        _GEN_34 = csr_sel == 2'h1;	
-        _GEN_35 = csr_sel == 2'h2;	
-        _GEN_36 = io_inst[14:12] == 3'h2;	
-        _GEN_37 = io_inst[14:12] == 3'h3;	
-        _GEN_38 = _GEN_31 | _GEN_36 | _GEN_37;	
-        if (_GEN_38 & _GEN_1)	
-          FileReg_1 <= _GEN_32[csr_sel];	
-        if (_GEN_38 & _GEN_2)	
-          FileReg_2 <= _GEN_32[csr_sel];	
-        if (_GEN_38 & _GEN_3)	
-          FileReg_3 <= _GEN_32[csr_sel];	
-        if (_GEN_38 & _GEN_4)	
-          FileReg_4 <= _GEN_32[csr_sel];	
-        if (_GEN_38 & _GEN_5)	
-          FileReg_5 <= _GEN_32[csr_sel];	
-        if (_GEN_38 & _GEN_6)	
-          FileReg_6 <= _GEN_32[csr_sel];	
-        if (_GEN_38 & _GEN_7)	
-          FileReg_7 <= _GEN_32[csr_sel];	
-        if (_GEN_38 & _GEN_8)	
-          FileReg_8 <= _GEN_32[csr_sel];	
-        if (_GEN_38 & _GEN_9)	
-          FileReg_9 <= _GEN_32[csr_sel];	
-        if (_GEN_38 & _GEN_10)	
-          FileReg_10 <= _GEN_32[csr_sel];	
-        if (_GEN_38 & _GEN_11)	
-          FileReg_11 <= _GEN_32[csr_sel];	
-        if (_GEN_38 & _GEN_12)	
-          FileReg_12 <= _GEN_32[csr_sel];	
-        if (_GEN_38 & _GEN_13)	
-          FileReg_13 <= _GEN_32[csr_sel];	
-        if (_GEN_38 & _GEN_14)	
-          FileReg_14 <= _GEN_32[csr_sel];	
-        if (_GEN_38 & _GEN_15)	
-          FileReg_15 <= _GEN_32[csr_sel];	
-        if (_GEN_38 & _GEN_16)	
-          FileReg_16 <= _GEN_32[csr_sel];	
-        if (_GEN_38 & _GEN_17)	
-          FileReg_17 <= _GEN_32[csr_sel];	
-        if (_GEN_38 & _GEN_18)	
-          FileReg_18 <= _GEN_32[csr_sel];	
-        if (_GEN_38 & _GEN_19)	
-          FileReg_19 <= _GEN_32[csr_sel];	
-        if (_GEN_38 & _GEN_20)	
-          FileReg_20 <= _GEN_32[csr_sel];	
-        if (_GEN_38 & _GEN_21)	
-          FileReg_21 <= _GEN_32[csr_sel];	
-        if (_GEN_38 & _GEN_22)	
-          FileReg_22 <= _GEN_32[csr_sel];	
-        if (_GEN_38 & _GEN_23)	
-          FileReg_23 <= _GEN_32[csr_sel];	
-        if (_GEN_38 & _GEN_24)	
-          FileReg_24 <= _GEN_32[csr_sel];	
-        if (_GEN_38 & _GEN_25)	
-          FileReg_25 <= _GEN_32[csr_sel];	
-        if (_GEN_38 & _GEN_26)	
-          FileReg_26 <= _GEN_32[csr_sel];	
-        if (_GEN_38 & _GEN_27)	
-          FileReg_27 <= _GEN_32[csr_sel];	
-        if (_GEN_38 & _GEN_28)	
-          FileReg_28 <= _GEN_32[csr_sel];	
-        if (_GEN_38 & _GEN_29)	
-          FileReg_29 <= _GEN_32[csr_sel];	
-        if (_GEN_38 & _GEN_30)	
-          FileReg_30 <= _GEN_32[csr_sel];	
-        if (_GEN_38 & (&(io_inst[11:7])))	
-          FileReg_31 <= _GEN_32[csr_sel];	
-        if (_GEN_31) begin	
-          if (_GEN_33)	
-            CsrReg_0 <= _GEN_0;	
-          else if (io_is_ecall)	
-            CsrReg_0 <= _CsrReg_0_T_3;	
-          else if (io_is_mret)	
-            CsrReg_0 <= _CsrReg_0_T_7;	
-          else	
-            CsrReg_0 <= 32'h1800;	
-          if (_GEN_34)	
-            CsrReg_1 <= _GEN_0;	
-          if (_GEN_35)	
-            CsrReg_2 <= _GEN_0;	
-          else if (io_is_ecall)	
-            CsrReg_2 <= io_pc;	
-          if (&csr_sel)	
-            CsrReg_3 <= _GEN_0;	
-          else if (io_is_ecall)	
-            CsrReg_3 <= 32'hB;	
-        end
-        else if (_GEN_36) begin	
-          automatic logic [31:0] _CsrReg_T;	
-          _CsrReg_T = _GEN_32[csr_sel] | _GEN_0;	
-          if (_GEN_33)	
-            CsrReg_0 <= _CsrReg_T;	
-          else if (io_is_ecall)	
-            CsrReg_0 <= _CsrReg_0_T_3;	
-          else if (io_is_mret)	
-            CsrReg_0 <= _CsrReg_0_T_7;	
-          else	
-            CsrReg_0 <= 32'h1800;	
-          if (_GEN_34)	
-            CsrReg_1 <= _CsrReg_T;	
-          if (_GEN_35)	
-            CsrReg_2 <= _CsrReg_T;	
-          else if (io_is_ecall)	
-            CsrReg_2 <= io_pc;	
-          if (&csr_sel)	
-            CsrReg_3 <= _CsrReg_T;	
-          else if (io_is_ecall)	
-            CsrReg_3 <= 32'hB;	
+      automatic logic [1:0]       csr_sel;	
+      automatic logic             _GEN_2;	
+      automatic logic [3:0][31:0] _GEN_3;	
+      automatic logic             _GEN_4;	
+      automatic logic [31:0]      _CsrReg_T;	
+      automatic logic             _GEN_5;	
+      automatic logic [31:0]      _CsrReg_T_2;	
+      automatic logic             _GEN_6 = io_is_ecall | io_is_mret;	
+      csr_sel =
+        io_inst[31:20] == 12'h300
+          ? 2'h0
+          : io_inst[31:20] == 12'h305
+              ? 2'h1
+              : io_inst[31:20] == 12'h341 ? 2'h2 : {2{io_inst[31:20] == 12'h342}};	
+      _GEN_2 = io_inst[14:12] == 3'h1;	
+      _GEN_3 = {{CsrReg_3}, {CsrReg_2}, {CsrReg_1}, {CsrReg_0}};	
+      _GEN_4 = io_inst[14:12] == 3'h2;	
+      _CsrReg_T = _GEN_3[csr_sel] | _GEN_0;	
+      _GEN_5 = io_inst[14:12] == 3'h3;	
+      _CsrReg_T_2 = _GEN_3[csr_sel] & ~_GEN_0;	
+      if (~_GEN_6) begin	
+        automatic logic _GEN_7;	
+        automatic logic _GEN_8;	
+        automatic logic _GEN_9;	
+        automatic logic _GEN_10;	
+        automatic logic _GEN_11;	
+        automatic logic _GEN_12;	
+        automatic logic _GEN_13;	
+        automatic logic _GEN_14;	
+        automatic logic _GEN_15;	
+        automatic logic _GEN_16;	
+        automatic logic _GEN_17;	
+        automatic logic _GEN_18;	
+        automatic logic _GEN_19;	
+        automatic logic _GEN_20;	
+        automatic logic _GEN_21;	
+        automatic logic _GEN_22;	
+        automatic logic _GEN_23;	
+        automatic logic _GEN_24;	
+        automatic logic _GEN_25;	
+        automatic logic _GEN_26;	
+        automatic logic _GEN_27;	
+        automatic logic _GEN_28;	
+        automatic logic _GEN_29;	
+        automatic logic _GEN_30;	
+        automatic logic _GEN_31;	
+        automatic logic _GEN_32;	
+        automatic logic _GEN_33;	
+        automatic logic _GEN_34;	
+        automatic logic _GEN_35;	
+        automatic logic _GEN_36;	
+        _GEN_7 = io_inst[11:7] == 5'h1;	
+        _GEN_8 = io_inst[11:7] == 5'h2;	
+        _GEN_9 = io_inst[11:7] == 5'h3;	
+        _GEN_10 = io_inst[11:7] == 5'h4;	
+        _GEN_11 = io_inst[11:7] == 5'h5;	
+        _GEN_12 = io_inst[11:7] == 5'h6;	
+        _GEN_13 = io_inst[11:7] == 5'h7;	
+        _GEN_14 = io_inst[11:7] == 5'h8;	
+        _GEN_15 = io_inst[11:7] == 5'h9;	
+        _GEN_16 = io_inst[11:7] == 5'hA;	
+        _GEN_17 = io_inst[11:7] == 5'hB;	
+        _GEN_18 = io_inst[11:7] == 5'hC;	
+        _GEN_19 = io_inst[11:7] == 5'hD;	
+        _GEN_20 = io_inst[11:7] == 5'hE;	
+        _GEN_21 = io_inst[11:7] == 5'hF;	
+        _GEN_22 = io_inst[11:7] == 5'h10;	
+        _GEN_23 = io_inst[11:7] == 5'h11;	
+        _GEN_24 = io_inst[11:7] == 5'h12;	
+        _GEN_25 = io_inst[11:7] == 5'h13;	
+        _GEN_26 = io_inst[11:7] == 5'h14;	
+        _GEN_27 = io_inst[11:7] == 5'h15;	
+        _GEN_28 = io_inst[11:7] == 5'h16;	
+        _GEN_29 = io_inst[11:7] == 5'h17;	
+        _GEN_30 = io_inst[11:7] == 5'h18;	
+        _GEN_31 = io_inst[11:7] == 5'h19;	
+        _GEN_32 = io_inst[11:7] == 5'h1A;	
+        _GEN_33 = io_inst[11:7] == 5'h1B;	
+        _GEN_34 = io_inst[11:7] == 5'h1C;	
+        _GEN_35 = io_inst[11:7] == 5'h1D;	
+        _GEN_36 = io_inst[11:7] == 5'h1E;	
+        if (io_is_csr) begin	
+          automatic logic _GEN_37;	
+          _GEN_37 = _GEN_2 | _GEN_4 | _GEN_5;	
+          if (_GEN_37 & _GEN_7)	
+            FileReg_1 <= _GEN_3[csr_sel];	
+          if (_GEN_37 & _GEN_8)	
+            FileReg_2 <= _GEN_3[csr_sel];	
+          if (_GEN_37 & _GEN_9)	
+            FileReg_3 <= _GEN_3[csr_sel];	
+          if (_GEN_37 & _GEN_10)	
+            FileReg_4 <= _GEN_3[csr_sel];	
+          if (_GEN_37 & _GEN_11)	
+            FileReg_5 <= _GEN_3[csr_sel];	
+          if (_GEN_37 & _GEN_12)	
+            FileReg_6 <= _GEN_3[csr_sel];	
+          if (_GEN_37 & _GEN_13)	
+            FileReg_7 <= _GEN_3[csr_sel];	
+          if (_GEN_37 & _GEN_14)	
+            FileReg_8 <= _GEN_3[csr_sel];	
+          if (_GEN_37 & _GEN_15)	
+            FileReg_9 <= _GEN_3[csr_sel];	
+          if (_GEN_37 & _GEN_16)	
+            FileReg_10 <= _GEN_3[csr_sel];	
+          if (_GEN_37 & _GEN_17)	
+            FileReg_11 <= _GEN_3[csr_sel];	
+          if (_GEN_37 & _GEN_18)	
+            FileReg_12 <= _GEN_3[csr_sel];	
+          if (_GEN_37 & _GEN_19)	
+            FileReg_13 <= _GEN_3[csr_sel];	
+          if (_GEN_37 & _GEN_20)	
+            FileReg_14 <= _GEN_3[csr_sel];	
+          if (_GEN_37 & _GEN_21)	
+            FileReg_15 <= _GEN_3[csr_sel];	
+          if (_GEN_37 & _GEN_22)	
+            FileReg_16 <= _GEN_3[csr_sel];	
+          if (_GEN_37 & _GEN_23)	
+            FileReg_17 <= _GEN_3[csr_sel];	
+          if (_GEN_37 & _GEN_24)	
+            FileReg_18 <= _GEN_3[csr_sel];	
+          if (_GEN_37 & _GEN_25)	
+            FileReg_19 <= _GEN_3[csr_sel];	
+          if (_GEN_37 & _GEN_26)	
+            FileReg_20 <= _GEN_3[csr_sel];	
+          if (_GEN_37 & _GEN_27)	
+            FileReg_21 <= _GEN_3[csr_sel];	
+          if (_GEN_37 & _GEN_28)	
+            FileReg_22 <= _GEN_3[csr_sel];	
+          if (_GEN_37 & _GEN_29)	
+            FileReg_23 <= _GEN_3[csr_sel];	
+          if (_GEN_37 & _GEN_30)	
+            FileReg_24 <= _GEN_3[csr_sel];	
+          if (_GEN_37 & _GEN_31)	
+            FileReg_25 <= _GEN_3[csr_sel];	
+          if (_GEN_37 & _GEN_32)	
+            FileReg_26 <= _GEN_3[csr_sel];	
+          if (_GEN_37 & _GEN_33)	
+            FileReg_27 <= _GEN_3[csr_sel];	
+          if (_GEN_37 & _GEN_34)	
+            FileReg_28 <= _GEN_3[csr_sel];	
+          if (_GEN_37 & _GEN_35)	
+            FileReg_29 <= _GEN_3[csr_sel];	
+          if (_GEN_37 & _GEN_36)	
+            FileReg_30 <= _GEN_3[csr_sel];	
+          if (_GEN_37 & (&(io_inst[11:7])))	
+            FileReg_31 <= _GEN_3[csr_sel];	
         end
         else begin	
-          automatic logic [31:0] _CsrReg_T_2;	
-          _CsrReg_T_2 = _GEN_32[csr_sel] & ~_GEN_0;	
-          if (_GEN_37) begin	
-            if (_GEN_33)	
-              CsrReg_0 <= _CsrReg_T_2;	
-            else if (io_is_ecall)	
-              CsrReg_0 <= _CsrReg_0_T_3;	
-            else if (io_is_mret)	
-              CsrReg_0 <= _CsrReg_0_T_7;	
+          automatic logic [31:0] wd;	
+          automatic logic [31:0] _GEN_38;	
+          wd =
+            (io_rf_wr_sel[0] ? io_alu_out : 32'h0) | (io_rf_wr_sel[1] ? io_dm_out : 32'h0)
+            | (io_rf_wr_sel[2] ? io_pc + 32'h4 : 32'h0);	
+          _GEN_38 = _GEN[io_inst[11:7]];	
+          if (_GEN_7) begin	
+            if (io_wr_en)	
+              FileReg_1 <= wd;	
+            else	
+              FileReg_1 <= _GEN_38;	
+          end
+          if (_GEN_8) begin	
+            if (io_wr_en)	
+              FileReg_2 <= wd;	
+            else	
+              FileReg_2 <= _GEN_38;	
+          end
+          if (_GEN_9) begin	
+            if (io_wr_en)	
+              FileReg_3 <= wd;	
+            else	
+              FileReg_3 <= _GEN_38;	
+          end
+          if (_GEN_10) begin	
+            if (io_wr_en)	
+              FileReg_4 <= wd;	
+            else	
+              FileReg_4 <= _GEN_38;	
+          end
+          if (_GEN_11) begin	
+            if (io_wr_en)	
+              FileReg_5 <= wd;	
+            else	
+              FileReg_5 <= _GEN_38;	
+          end
+          if (_GEN_12) begin	
+            if (io_wr_en)	
+              FileReg_6 <= wd;	
+            else	
+              FileReg_6 <= _GEN_38;	
+          end
+          if (_GEN_13) begin	
+            if (io_wr_en)	
+              FileReg_7 <= wd;	
+            else	
+              FileReg_7 <= _GEN_38;	
+          end
+          if (_GEN_14) begin	
+            if (io_wr_en)	
+              FileReg_8 <= wd;	
+            else	
+              FileReg_8 <= _GEN_38;	
+          end
+          if (_GEN_15) begin	
+            if (io_wr_en)	
+              FileReg_9 <= wd;	
+            else	
+              FileReg_9 <= _GEN_38;	
+          end
+          if (_GEN_16) begin	
+            if (io_wr_en)	
+              FileReg_10 <= wd;	
+            else	
+              FileReg_10 <= _GEN_38;	
+          end
+          if (_GEN_17) begin	
+            if (io_wr_en)	
+              FileReg_11 <= wd;	
+            else	
+              FileReg_11 <= _GEN_38;	
+          end
+          if (_GEN_18) begin	
+            if (io_wr_en)	
+              FileReg_12 <= wd;	
+            else	
+              FileReg_12 <= _GEN_38;	
+          end
+          if (_GEN_19) begin	
+            if (io_wr_en)	
+              FileReg_13 <= wd;	
+            else	
+              FileReg_13 <= _GEN_38;	
+          end
+          if (_GEN_20) begin	
+            if (io_wr_en)	
+              FileReg_14 <= wd;	
+            else	
+              FileReg_14 <= _GEN_38;	
+          end
+          if (_GEN_21) begin	
+            if (io_wr_en)	
+              FileReg_15 <= wd;	
+            else	
+              FileReg_15 <= _GEN_38;	
+          end
+          if (_GEN_22) begin	
+            if (io_wr_en)	
+              FileReg_16 <= wd;	
+            else	
+              FileReg_16 <= _GEN_38;	
+          end
+          if (_GEN_23) begin	
+            if (io_wr_en)	
+              FileReg_17 <= wd;	
+            else	
+              FileReg_17 <= _GEN_38;	
+          end
+          if (_GEN_24) begin	
+            if (io_wr_en)	
+              FileReg_18 <= wd;	
+            else	
+              FileReg_18 <= _GEN_38;	
+          end
+          if (_GEN_25) begin	
+            if (io_wr_en)	
+              FileReg_19 <= wd;	
+            else	
+              FileReg_19 <= _GEN_38;	
+          end
+          if (_GEN_26) begin	
+            if (io_wr_en)	
+              FileReg_20 <= wd;	
+            else	
+              FileReg_20 <= _GEN_38;	
+          end
+          if (_GEN_27) begin	
+            if (io_wr_en)	
+              FileReg_21 <= wd;	
+            else	
+              FileReg_21 <= _GEN_38;	
+          end
+          if (_GEN_28) begin	
+            if (io_wr_en)	
+              FileReg_22 <= wd;	
+            else	
+              FileReg_22 <= _GEN_38;	
+          end
+          if (_GEN_29) begin	
+            if (io_wr_en)	
+              FileReg_23 <= wd;	
+            else	
+              FileReg_23 <= _GEN_38;	
+          end
+          if (_GEN_30) begin	
+            if (io_wr_en)	
+              FileReg_24 <= wd;	
+            else	
+              FileReg_24 <= _GEN_38;	
+          end
+          if (_GEN_31) begin	
+            if (io_wr_en)	
+              FileReg_25 <= wd;	
+            else	
+              FileReg_25 <= _GEN_38;	
+          end
+          if (_GEN_32) begin	
+            if (io_wr_en)	
+              FileReg_26 <= wd;	
+            else	
+              FileReg_26 <= _GEN_38;	
+          end
+          if (_GEN_33) begin	
+            if (io_wr_en)	
+              FileReg_27 <= wd;	
+            else	
+              FileReg_27 <= _GEN_38;	
+          end
+          if (_GEN_34) begin	
+            if (io_wr_en)	
+              FileReg_28 <= wd;	
+            else	
+              FileReg_28 <= _GEN_38;	
+          end
+          if (_GEN_35) begin	
+            if (io_wr_en)	
+              FileReg_29 <= wd;	
+            else	
+              FileReg_29 <= _GEN_38;	
+          end
+          if (_GEN_36) begin	
+            if (io_wr_en)	
+              FileReg_30 <= wd;	
+            else	
+              FileReg_30 <= _GEN_38;	
+          end
+          if (&(io_inst[11:7])) begin	
+            if (io_wr_en)	
+              FileReg_31 <= wd;	
+            else	
+              FileReg_31 <= _GEN_38;	
+          end
+        end
+      end
+      if (io_is_ecall) begin	
+        CsrReg_0 <= CsrReg_0 & 32'hFFFFFFFE;	
+        CsrReg_2 <= io_pc;	
+        CsrReg_3 <= 32'hB;	
+      end
+      else begin	
+        if (io_is_mret)	
+          CsrReg_0 <= {CsrReg_0[31:8], CsrReg_0[7:0] | 8'h80};	
+        else if (io_is_csr) begin	
+          automatic logic _GEN_39;	
+          _GEN_39 = csr_sel == 2'h0;	
+          if (_GEN_2)	
+            CsrReg_0 <= _GEN_39 ? _GEN_0 : 32'h1800;	
+          else if (_GEN_4) begin	
+            if (_GEN_39)	
+              CsrReg_0 <= _CsrReg_T;	
             else	
               CsrReg_0 <= 32'h1800;	
           end
+          else if (_GEN_5 & _GEN_39)	
+            CsrReg_0 <= _CsrReg_T_2;	
           else	
             CsrReg_0 <= 32'h1800;	
-          if (_GEN_37 & _GEN_34)	
-            CsrReg_1 <= _CsrReg_T_2;	
-          if (_GEN_37 & _GEN_35)	
-            CsrReg_2 <= _CsrReg_T_2;	
-          else if (io_is_ecall)	
-            CsrReg_2 <= io_pc;	
-          if (_GEN_37 & (&csr_sel))	
-            CsrReg_3 <= _CsrReg_T_2;	
-          else if (io_is_ecall)	
-            CsrReg_3 <= 32'hB;	
         end
-      end
-      else begin	
-        automatic logic [31:0] wd;	
-        automatic logic [31:0] _GEN_39;	
-        wd =
-          (io_rf_wr_sel[0] ? io_alu_out : 32'h0) | (io_rf_wr_sel[1] ? io_dm_out : 32'h0)
-          | (io_rf_wr_sel[2] ? io_pc + 32'h4 : 32'h0);	
-        _GEN_39 = _GEN[io_inst[11:7]];	
-        if (_GEN_1) begin	
-          if (io_wr_en)	
-            FileReg_1 <= wd;	
-          else	
-            FileReg_1 <= _GEN_39;	
-        end
-        if (_GEN_2) begin	
-          if (io_wr_en)	
-            FileReg_2 <= wd;	
-          else	
-            FileReg_2 <= _GEN_39;	
-        end
-        if (_GEN_3) begin	
-          if (io_wr_en)	
-            FileReg_3 <= wd;	
-          else	
-            FileReg_3 <= _GEN_39;	
-        end
-        if (_GEN_4) begin	
-          if (io_wr_en)	
-            FileReg_4 <= wd;	
-          else	
-            FileReg_4 <= _GEN_39;	
-        end
-        if (_GEN_5) begin	
-          if (io_wr_en)	
-            FileReg_5 <= wd;	
-          else	
-            FileReg_5 <= _GEN_39;	
-        end
-        if (_GEN_6) begin	
-          if (io_wr_en)	
-            FileReg_6 <= wd;	
-          else	
-            FileReg_6 <= _GEN_39;	
-        end
-        if (_GEN_7) begin	
-          if (io_wr_en)	
-            FileReg_7 <= wd;	
-          else	
-            FileReg_7 <= _GEN_39;	
-        end
-        if (_GEN_8) begin	
-          if (io_wr_en)	
-            FileReg_8 <= wd;	
-          else	
-            FileReg_8 <= _GEN_39;	
-        end
-        if (_GEN_9) begin	
-          if (io_wr_en)	
-            FileReg_9 <= wd;	
-          else	
-            FileReg_9 <= _GEN_39;	
-        end
-        if (_GEN_10) begin	
-          if (io_wr_en)	
-            FileReg_10 <= wd;	
-          else	
-            FileReg_10 <= _GEN_39;	
-        end
-        if (_GEN_11) begin	
-          if (io_wr_en)	
-            FileReg_11 <= wd;	
-          else	
-            FileReg_11 <= _GEN_39;	
-        end
-        if (_GEN_12) begin	
-          if (io_wr_en)	
-            FileReg_12 <= wd;	
-          else	
-            FileReg_12 <= _GEN_39;	
-        end
-        if (_GEN_13) begin	
-          if (io_wr_en)	
-            FileReg_13 <= wd;	
-          else	
-            FileReg_13 <= _GEN_39;	
-        end
-        if (_GEN_14) begin	
-          if (io_wr_en)	
-            FileReg_14 <= wd;	
-          else	
-            FileReg_14 <= _GEN_39;	
-        end
-        if (_GEN_15) begin	
-          if (io_wr_en)	
-            FileReg_15 <= wd;	
-          else	
-            FileReg_15 <= _GEN_39;	
-        end
-        if (_GEN_16) begin	
-          if (io_wr_en)	
-            FileReg_16 <= wd;	
-          else	
-            FileReg_16 <= _GEN_39;	
-        end
-        if (_GEN_17) begin	
-          if (io_wr_en)	
-            FileReg_17 <= wd;	
-          else	
-            FileReg_17 <= _GEN_39;	
-        end
-        if (_GEN_18) begin	
-          if (io_wr_en)	
-            FileReg_18 <= wd;	
-          else	
-            FileReg_18 <= _GEN_39;	
-        end
-        if (_GEN_19) begin	
-          if (io_wr_en)	
-            FileReg_19 <= wd;	
-          else	
-            FileReg_19 <= _GEN_39;	
-        end
-        if (_GEN_20) begin	
-          if (io_wr_en)	
-            FileReg_20 <= wd;	
-          else	
-            FileReg_20 <= _GEN_39;	
-        end
-        if (_GEN_21) begin	
-          if (io_wr_en)	
-            FileReg_21 <= wd;	
-          else	
-            FileReg_21 <= _GEN_39;	
-        end
-        if (_GEN_22) begin	
-          if (io_wr_en)	
-            FileReg_22 <= wd;	
-          else	
-            FileReg_22 <= _GEN_39;	
-        end
-        if (_GEN_23) begin	
-          if (io_wr_en)	
-            FileReg_23 <= wd;	
-          else	
-            FileReg_23 <= _GEN_39;	
-        end
-        if (_GEN_24) begin	
-          if (io_wr_en)	
-            FileReg_24 <= wd;	
-          else	
-            FileReg_24 <= _GEN_39;	
-        end
-        if (_GEN_25) begin	
-          if (io_wr_en)	
-            FileReg_25 <= wd;	
-          else	
-            FileReg_25 <= _GEN_39;	
-        end
-        if (_GEN_26) begin	
-          if (io_wr_en)	
-            FileReg_26 <= wd;	
-          else	
-            FileReg_26 <= _GEN_39;	
-        end
-        if (_GEN_27) begin	
-          if (io_wr_en)	
-            FileReg_27 <= wd;	
-          else	
-            FileReg_27 <= _GEN_39;	
-        end
-        if (_GEN_28) begin	
-          if (io_wr_en)	
-            FileReg_28 <= wd;	
-          else	
-            FileReg_28 <= _GEN_39;	
-        end
-        if (_GEN_29) begin	
-          if (io_wr_en)	
-            FileReg_29 <= wd;	
-          else	
-            FileReg_29 <= _GEN_39;	
-        end
-        if (_GEN_30) begin	
-          if (io_wr_en)	
-            FileReg_30 <= wd;	
-          else	
-            FileReg_30 <= _GEN_39;	
-        end
-        if (&(io_inst[11:7])) begin	
-          if (io_wr_en)	
-            FileReg_31 <= wd;	
-          else	
-            FileReg_31 <= _GEN_39;	
-        end
-        if (io_is_ecall) begin	
-          CsrReg_0 <= _CsrReg_0_T_3;	
-          CsrReg_2 <= io_pc;	
-          CsrReg_3 <= 32'hB;	
-        end
-        else if (io_is_mret)	
-          CsrReg_0 <= _CsrReg_0_T_7;	
         else	
           CsrReg_0 <= 32'h1800;	
+        if (io_is_mret | ~io_is_csr) begin	
+        end
+        else begin	
+          automatic logic _GEN_40;	
+          _GEN_40 = csr_sel == 2'h2;	
+          if (_GEN_2) begin	
+            if (_GEN_40)	
+              CsrReg_2 <= _GEN_0;	
+            if (&csr_sel)	
+              CsrReg_3 <= _GEN_0;	
+          end
+          else if (_GEN_4) begin	
+            if (_GEN_40)	
+              CsrReg_2 <= _CsrReg_T;	
+            if (&csr_sel)	
+              CsrReg_3 <= _CsrReg_T;	
+          end
+          else begin	
+            if (_GEN_5 & _GEN_40)	
+              CsrReg_2 <= _CsrReg_T_2;	
+            if (_GEN_5 & (&csr_sel))	
+              CsrReg_3 <= _CsrReg_T_2;	
+          end
+        end
+      end
+      if (_GEN_6 | ~io_is_csr) begin	
+      end
+      else begin	
+        automatic logic _GEN_41;	
+        _GEN_41 = csr_sel == 2'h1;	
+        if (_GEN_2) begin	
+          if (_GEN_41)	
+            CsrReg_1 <= _GEN_0;	
+        end
+        else if (_GEN_4) begin	
+          if (_GEN_41)	
+            CsrReg_1 <= _CsrReg_T;	
+        end
+        else if (_GEN_5 & _GEN_41)	
+          CsrReg_1 <= _CsrReg_T_2;	
       end
     end
   end 
@@ -860,8 +887,8 @@ module REGISTERFILE(
       `FIRRTL_AFTER_INITIAL	
     `endif 
   `endif 
-  assign io_rd1 = io_is_csr ? 32'h0 : _GEN_0;	
-  assign io_rd2 = io_is_csr ? 32'h0 : _GEN[io_inst[24:20]];	
+  assign io_rd1 = _GEN_1 ? 32'h0 : _GEN_0;	
+  assign io_rd2 = _GEN_1 ? 32'h0 : _GEN[io_inst[24:20]];	
   assign io_mtvec = io_is_ecall ? CsrReg_1 : 32'h0;	
   assign io_epc = io_is_ecall | ~io_is_mret ? 32'h0 : CsrReg_2;	
 endmodule
@@ -878,39 +905,31 @@ module IDU(
   output        io_out_bits_alu_a_sel,	
                 io_out_bits_alu_b_sel,	
   output [31:0] io_out_bits_pc,	
+  output        io_out_bits_jump_en,	
+                io_out_bits_jump_jalr,	
+                io_out_bits_is_ecall,	
+                io_out_bits_is_mret,	
+                io_out_bits_is_csr,	
+  output [31:0] io_out_bits_mtvec,	
+                io_out_bits_epc,	
+  output        io_out_bits_mem_rd_en,	
+                io_out_bits_mem_wr_en,	
+                io_out_bits_rf_wr_en,	
+  output [31:0] io_out_bits_len,	
+  output        io_out_bits_load_unsign,	
+                io_out_bits_is_cmp,	
   input  [31:0] io_alu_rsl,	
-  output        io_jump_jalr,	
-                io_jump_en,	
-  output [31:0] io_imm,	
-  output        io_is_ecall,	
-                io_is_mret,	
-  output [31:0] io_mtvec,	
-                io_epc,	
-                io_rd1	
+                io_dm_out,	
+  input         io_wbu_valid	
 );
 
   wire [31:0] _RegisterFile_io_rd1;	
   wire [31:0] _RegisterFile_io_rd2;	
   wire        _Contorller_io_rf_wr_en;	
   wire [2:0]  _Contorller_io_rf_wr_sel;	
-  wire        _Contorller_io_mem_wr_en;	
-  wire        _Contorller_io_mem_rd_en;	
-  wire [31:0] _Contorller_io_len;	
-  wire [31:0] _Contorller_io_imm;	
-  wire        _Contorller_io_load_unsign;	
   wire        _Contorller_io_is_ecall;	
   wire        _Contorller_io_is_csr;	
   wire        _Contorller_io_is_mret;	
-  wire [31:0] _Dmem_dm_out;	
-  Date_Memory Dmem (	
-    .alu_out     (io_alu_rsl),
-    .data        (_RegisterFile_io_rd2),	
-    .wr_en       (_Contorller_io_mem_wr_en),	
-    .rd_en       (_Contorller_io_mem_rd_en),	
-    .len         (_Contorller_io_len),	
-    .load_unsign (_Contorller_io_load_unsign),	
-    .dm_out      (_Dmem_dm_out)
-  );
   CONTORLLER Contorller (	
     .io_inst        (io_in_bits_inst),
     .io_rs1         (_RegisterFile_io_rd1),	
@@ -919,24 +938,25 @@ module IDU(
     .io_rf_wr_sel   (_Contorller_io_rf_wr_sel),
     .io_alu_a_sel   (io_out_bits_alu_a_sel),
     .io_alu_b_sel   (io_out_bits_alu_b_sel),
-    .io_mem_wr_en   (_Contorller_io_mem_wr_en),
-    .io_mem_rd_en   (_Contorller_io_mem_rd_en),
+    .io_mem_wr_en   (io_out_bits_mem_wr_en),
+    .io_mem_rd_en   (io_out_bits_mem_rd_en),
     .io_alu_sel     (io_out_bits_alu_sel),
-    .io_jump_en     (io_jump_en),
-    .io_jump_jalr   (io_jump_jalr),
-    .io_len         (_Contorller_io_len),
-    .io_imm         (_Contorller_io_imm),
-    .io_load_unsign (_Contorller_io_load_unsign),
+    .io_jump_en     (io_out_bits_jump_en),
+    .io_jump_jalr   (io_out_bits_jump_jalr),
+    .io_len         (io_out_bits_len),
+    .io_imm         (io_out_bits_imm),
+    .io_load_unsign (io_out_bits_load_unsign),
     .io_is_ecall    (_Contorller_io_is_ecall),
     .io_is_csr      (_Contorller_io_is_csr),
-    .io_is_mret     (_Contorller_io_is_mret)
+    .io_is_mret     (_Contorller_io_is_mret),
+    .io_is_cmp      (io_out_bits_is_cmp)
   );
   REGISTERFILE RegisterFile (	
     .clock        (clock),
     .reset        (reset),
     .io_inst      (io_in_bits_inst),
-    .io_wr_en     (_Contorller_io_rf_wr_en),	
-    .io_dm_out    (_Dmem_dm_out),	
+    .io_wr_en     (_Contorller_io_rf_wr_en & io_wbu_valid),	
+    .io_dm_out    (io_dm_out),
     .io_alu_out   (io_alu_rsl),
     .io_rf_wr_sel (_Contorller_io_rf_wr_sel),	
     .io_is_csr    (_Contorller_io_is_csr),	
@@ -945,17 +965,16 @@ module IDU(
     .io_pc        (io_in_bits_pc),
     .io_rd1       (_RegisterFile_io_rd1),
     .io_rd2       (_RegisterFile_io_rd2),
-    .io_mtvec     (io_mtvec),
-    .io_epc       (io_epc)
+    .io_mtvec     (io_out_bits_mtvec),
+    .io_epc       (io_out_bits_epc)
   );
   assign io_out_bits_rs1 = _RegisterFile_io_rd1;	
   assign io_out_bits_rs2 = _RegisterFile_io_rd2;	
-  assign io_out_bits_imm = _Contorller_io_imm;	
   assign io_out_bits_pc = io_in_bits_pc;	
-  assign io_imm = _Contorller_io_imm;	
-  assign io_is_ecall = _Contorller_io_is_ecall;	
-  assign io_is_mret = _Contorller_io_is_mret;	
-  assign io_rd1 = _RegisterFile_io_rd1;	
+  assign io_out_bits_is_ecall = _Contorller_io_is_ecall;	
+  assign io_out_bits_is_mret = _Contorller_io_is_mret;	
+  assign io_out_bits_is_csr = _Contorller_io_is_csr;	
+  assign io_out_bits_rf_wr_en = _Contorller_io_rf_wr_en;	
 endmodule
 
 module ALU(	
@@ -991,9 +1010,40 @@ module EXU(
   input         io_in_bits_alu_a_sel,	
                 io_in_bits_alu_b_sel,	
   input  [31:0] io_in_bits_pc,	
+  input         io_in_bits_jump_en,	
+                io_in_bits_jump_jalr,	
+                io_in_bits_is_ecall,	
+                io_in_bits_is_mret,	
+                io_in_bits_is_csr,	
+  input  [31:0] io_in_bits_mtvec,	
+                io_in_bits_epc,	
+  input         io_in_bits_mem_rd_en,	
+                io_in_bits_mem_wr_en,	
+                io_in_bits_rf_wr_en,	
+  input  [31:0] io_in_bits_len,	
+  input         io_in_bits_load_unsign,	
+                io_in_bits_is_cmp,	
+  output [31:0] io_out_bits_alu_out,	
+                io_out_bits_data,	
+  output        io_out_bits_mem_wr_en,	
+                io_out_bits_mem_rd_en,	
+                io_out_bits_rf_wr_en,	
+  output [31:0] io_out_bits_len,	
+  output        io_out_bits_load_unsign,	
+                io_out_bits_jump_jalr,	
+                io_out_bits_jump_en,	
+  output [31:0] io_out_bits_imm,	
+  output        io_out_bits_is_ecall,	
+                io_out_bits_is_mret,	
+                io_out_bits_is_csr,	
+  output [31:0] io_out_bits_mtvec,	
+                io_out_bits_epc,	
+                io_out_bits_rd1,	
+  output        io_out_bits_is_cmp,	
   output [31:0] io_alu_rsl	
 );
 
+  wire [31:0] _Alu_io_rsl;	
   ALU Alu (	
     .io_rs1       (io_in_bits_rs1),
     .io_rs2       (io_in_bits_rs2),
@@ -1002,40 +1052,242 @@ module EXU(
     .io_alu_b_sel (io_in_bits_alu_b_sel),
     .io_alu_sel   (io_in_bits_alu_sel),
     .io_pc        (io_in_bits_pc),
-    .io_rsl       (io_alu_rsl)
+    .io_rsl       (_Alu_io_rsl)
   );
+  assign io_out_bits_alu_out = _Alu_io_rsl;	
+  assign io_out_bits_data = io_in_bits_rs2;	
+  assign io_out_bits_mem_wr_en = io_in_bits_mem_wr_en;	
+  assign io_out_bits_mem_rd_en = io_in_bits_mem_rd_en;	
+  assign io_out_bits_rf_wr_en = io_in_bits_rf_wr_en;	
+  assign io_out_bits_len = io_in_bits_len;	
+  assign io_out_bits_load_unsign = io_in_bits_load_unsign;	
+  assign io_out_bits_jump_jalr = io_in_bits_jump_jalr;	
+  assign io_out_bits_jump_en = io_in_bits_jump_en;	
+  assign io_out_bits_imm = io_in_bits_imm;	
+  assign io_out_bits_is_ecall = io_in_bits_is_ecall;	
+  assign io_out_bits_is_mret = io_in_bits_is_mret;	
+  assign io_out_bits_is_csr = io_in_bits_is_csr;	
+  assign io_out_bits_mtvec = io_in_bits_mtvec;	
+  assign io_out_bits_epc = io_in_bits_epc;	
+  assign io_out_bits_rd1 = io_in_bits_rs1;	
+  assign io_out_bits_is_cmp = io_in_bits_is_cmp;	
+  assign io_alu_rsl = _Alu_io_rsl;	
+endmodule
+
+
+module ISU(	
+  input         clock,	
+                reset,	
+  input  [31:0] io_in_bits_alu_out,	
+                io_in_bits_data,	
+  input         io_in_bits_mem_wr_en,	
+                io_in_bits_mem_rd_en,	
+                io_in_bits_rf_wr_en,	
+  input  [31:0] io_in_bits_len,	
+  input         io_in_bits_load_unsign,	
+                io_in_bits_jump_jalr,	
+                io_in_bits_jump_en,	
+  input  [31:0] io_in_bits_imm,	
+  input         io_in_bits_is_ecall,	
+                io_in_bits_is_mret,	
+                io_in_bits_is_csr,	
+  input  [31:0] io_in_bits_mtvec,	
+                io_in_bits_epc,	
+                io_in_bits_rd1,	
+  input         io_in_bits_is_cmp,	
+  output [31:0] io_out_bits_dm_out,	
+                io_out_bits_alu_out,	
+  output        io_out_bits_jump_jalr,	
+                io_out_bits_jump_en,	
+  output [31:0] io_out_bits_imm,	
+  output        io_out_bits_is_ecall,	
+                io_out_bits_is_mret,	
+                io_out_bits_is_csr,	
+  output [31:0] io_out_bits_mtvec,	
+                io_out_bits_epc,	
+                io_out_bits_rd1,	
+  output        io_out_bits_mem_rd_en,	
+                io_out_bits_mem_wr_en,	
+                io_out_bits_rf_wr_en,	
+                io_out_bits_finish_load,	
+                io_out_bits_is_cmp	
+);
+
+  wire [31:0] _Dmem_dm_out;	
+  reg  [31:0] dm_reg;	
+  reg         finish_load;	
+  reg         next_pc;	
+  always @(posedge clock) begin	
+    if (reset) begin	
+      dm_reg <= 32'h0;	
+      finish_load <= 1'h0;	
+      next_pc <= 1'h1;	
+    end
+    else begin	
+      automatic logic _GEN;	
+      _GEN = io_in_bits_mem_rd_en & ~finish_load;	
+      dm_reg <= _Dmem_dm_out;	
+      finish_load <= ~next_pc & _GEN;	
+      next_pc <= ~next_pc & (~_GEN & finish_load | next_pc);	
+    end
+  end 
+  `ifdef ENABLE_INITIAL_REG_	
+    `ifdef FIRRTL_BEFORE_INITIAL	
+      `FIRRTL_BEFORE_INITIAL	
+    `endif 
+    initial begin	
+      automatic logic [31:0] _RANDOM[0:1];	
+      `ifdef INIT_RANDOM_PROLOG_	
+        `INIT_RANDOM_PROLOG_	
+      `endif 
+      `ifdef RANDOMIZE_REG_INIT	
+        for (logic [1:0] i = 2'h0; i < 2'h2; i += 2'h1) begin
+          _RANDOM[i[0]] = `RANDOM;	
+        end	
+        dm_reg = _RANDOM[1'h0];	
+        finish_load = _RANDOM[1'h1][0];	
+        next_pc = _RANDOM[1'h1][1];	
+      `endif 
+    end 
+    `ifdef FIRRTL_AFTER_INITIAL	
+      `FIRRTL_AFTER_INITIAL	
+    `endif 
+  `endif 
+  Date_Memory Dmem (	
+    .alu_out     (io_in_bits_alu_out),
+    .data        (io_in_bits_data),
+    .wr_en       (io_in_bits_mem_wr_en),
+    .rd_en       (io_in_bits_mem_rd_en & ~finish_load & ~next_pc),	
+    .len         (io_in_bits_len),
+    .load_unsign (io_in_bits_load_unsign),
+    .dm_out      (_Dmem_dm_out)
+  );
+  assign io_out_bits_dm_out = dm_reg;	
+  assign io_out_bits_alu_out = io_in_bits_alu_out;	
+  assign io_out_bits_jump_jalr = io_in_bits_jump_jalr;	
+  assign io_out_bits_jump_en = io_in_bits_jump_en;	
+  assign io_out_bits_imm = io_in_bits_imm;	
+  assign io_out_bits_is_ecall = io_in_bits_is_ecall;	
+  assign io_out_bits_is_mret = io_in_bits_is_mret;	
+  assign io_out_bits_is_csr = io_in_bits_is_csr;	
+  assign io_out_bits_mtvec = io_in_bits_mtvec;	
+  assign io_out_bits_epc = io_in_bits_epc;	
+  assign io_out_bits_rd1 = io_in_bits_rd1;	
+  assign io_out_bits_mem_rd_en = io_in_bits_mem_rd_en;	
+  assign io_out_bits_mem_wr_en = io_in_bits_mem_wr_en;	
+  assign io_out_bits_rf_wr_en = io_in_bits_rf_wr_en;	
+  assign io_out_bits_finish_load = finish_load;	
+  assign io_out_bits_is_cmp = io_in_bits_is_cmp;	
+endmodule
+
+module WBU(	
+  input         clock,	
+                reset,	
+  input  [31:0] io_in_bits_dm_out,	
+                io_in_bits_alu_out,	
+  input         io_in_bits_jump_jalr,	
+                io_in_bits_jump_en,	
+  input  [31:0] io_in_bits_imm,	
+  input         io_in_bits_is_ecall,	
+                io_in_bits_is_mret,	
+                io_in_bits_is_csr,	
+  input  [31:0] io_in_bits_mtvec,	
+                io_in_bits_epc,	
+                io_in_bits_rd1,	
+  input         io_in_bits_mem_rd_en,	
+                io_in_bits_mem_wr_en,	
+                io_in_bits_rf_wr_en,	
+                io_in_bits_finish_load,	
+                io_in_bits_is_cmp,	
+  output        io_out_bits_jump_jalr,	
+                io_out_bits_jump_en,	
+  output [31:0] io_out_bits_imm,	
+  output        io_out_bits_is_ecall,	
+                io_out_bits_is_mret,	
+  output [31:0] io_out_bits_mtvec,	
+                io_out_bits_epc,	
+                io_out_bits_rd1,	
+                io_dm_out,	
+                io_alu_out,	
+  output        io_wbu_valid	
+);
+
+  reg  wbu_reg;	
+  wire io_wbu_valid_0 =
+    ~wbu_reg
+    & (io_in_bits_mem_rd_en & io_in_bits_finish_load | ~io_in_bits_mem_rd_en
+       & io_in_bits_rf_wr_en | io_in_bits_mem_wr_en | io_in_bits_jump_en
+       | io_in_bits_is_cmp | io_in_bits_is_ecall | io_in_bits_is_csr
+       | io_in_bits_is_mret);	
+  always @(posedge clock) begin	
+    if (reset)	
+      wbu_reg <= 1'h0;	
+    else	
+      wbu_reg <= ~wbu_reg & io_wbu_valid_0;	
+  end 
+  `ifdef ENABLE_INITIAL_REG_	
+    `ifdef FIRRTL_BEFORE_INITIAL	
+      `FIRRTL_BEFORE_INITIAL	
+    `endif 
+    initial begin	
+      automatic logic [31:0] _RANDOM[0:0];	
+      `ifdef INIT_RANDOM_PROLOG_	
+        `INIT_RANDOM_PROLOG_	
+      `endif 
+      `ifdef RANDOMIZE_REG_INIT	
+        _RANDOM[/*Zero width*/ 1'b0] = `RANDOM;	
+        wbu_reg = _RANDOM[/*Zero width*/ 1'b0][0];	
+      `endif 
+    end 
+    `ifdef FIRRTL_AFTER_INITIAL	
+      `FIRRTL_AFTER_INITIAL	
+    `endif 
+  `endif 
+  assign io_out_bits_jump_jalr = io_in_bits_jump_jalr;	
+  assign io_out_bits_jump_en = io_in_bits_jump_en;	
+  assign io_out_bits_imm = io_in_bits_imm;	
+  assign io_out_bits_is_ecall = io_in_bits_is_ecall;	
+  assign io_out_bits_is_mret = io_in_bits_is_mret;	
+  assign io_out_bits_mtvec = io_in_bits_mtvec;	
+  assign io_out_bits_epc = io_in_bits_epc;	
+  assign io_out_bits_rd1 = io_in_bits_rd1;	
+  assign io_dm_out = io_in_bits_dm_out;	
+  assign io_alu_out = io_in_bits_alu_out;	
+  assign io_wbu_valid = io_wbu_valid_0;	
 endmodule
 
 module PC(	
   input         clock,	
                 reset,	
-                io_jump_jalr,	
-                io_jump_en,	
-  input  [31:0] io_imm,	
-  input         io_is_ecall,	
-                io_is_mret,	
-  input  [31:0] io_mtvec,	
-                io_epc,	
-                io_rd1,	
-  output [31:0] io_next_pc	
+  output [31:0] io_next_pc,	
+  input         io_in_bits_jump_jalr,	
+                io_in_bits_jump_en,	
+  input  [31:0] io_in_bits_imm,	
+  input         io_in_bits_is_ecall,	
+                io_in_bits_is_mret,	
+  input  [31:0] io_in_bits_mtvec,	
+                io_in_bits_epc,	
+                io_in_bits_rd1,	
+  input         io_wbu_valid,	
+  output        io_diff_test	
 );
 
   reg [31:0] pc;	
   always @(posedge clock) begin	
     if (reset)	
       pc <= 32'h80000000;	
-    else if (io_jump_jalr) begin	
-      automatic logic [31:0] _jalr_pc_T = io_rd1 + io_imm;	
-      pc <= {_jalr_pc_T[31:1], 1'h0};	
+    else if (io_wbu_valid) begin	
+      if (io_in_bits_jump_en)	
+        pc <= pc + io_in_bits_imm;	
+      else if (io_in_bits_jump_jalr)	
+        pc <= io_in_bits_rd1 + io_in_bits_imm;	
+      else if (io_in_bits_is_ecall)	
+        pc <= io_in_bits_mtvec;	
+      else if (io_in_bits_is_mret)	
+        pc <= io_in_bits_epc;	
+      else	
+        pc <= pc + 32'h4;	
     end
-    else if (io_jump_en)	
-      pc <= pc + io_imm;	
-    else if (io_is_ecall)	
-      pc <= io_mtvec;	
-    else if (io_is_mret)	
-      pc <= io_epc;	
-    else	
-      pc <= pc + 32'h4;	
   end 
   `ifdef ENABLE_INITIAL_REG_	
     `ifdef FIRRTL_BEFORE_INITIAL	
@@ -1056,6 +1308,7 @@ module PC(
     `endif 
   `endif 
   assign io_next_pc = pc;	
+  assign io_diff_test = io_wbu_valid;	
 endmodule
 
 module top(	
@@ -1063,11 +1316,56 @@ module top(
                 reset,	
   output [31:0] io_pc,	
                 io_alu_rsl,	
-                io_inst	
+                io_inst,	
+                io_imm,	
+  output        io_diff_test	
 );
 
   wire [31:0] _pc_io_next_pc;	
-  wire [31:0] _exu_io_alu_rsl;	
+  wire        _wbu_io_out_bits_jump_jalr;	
+  wire        _wbu_io_out_bits_jump_en;	
+  wire [31:0] _wbu_io_out_bits_imm;	
+  wire        _wbu_io_out_bits_is_ecall;	
+  wire        _wbu_io_out_bits_is_mret;	
+  wire [31:0] _wbu_io_out_bits_mtvec;	
+  wire [31:0] _wbu_io_out_bits_epc;	
+  wire [31:0] _wbu_io_out_bits_rd1;	
+  wire [31:0] _wbu_io_dm_out;	
+  wire [31:0] _wbu_io_alu_out;	
+  wire        _wbu_io_wbu_valid;	
+  wire [31:0] _isu_io_out_bits_dm_out;	
+  wire [31:0] _isu_io_out_bits_alu_out;	
+  wire        _isu_io_out_bits_jump_jalr;	
+  wire        _isu_io_out_bits_jump_en;	
+  wire [31:0] _isu_io_out_bits_imm;	
+  wire        _isu_io_out_bits_is_ecall;	
+  wire        _isu_io_out_bits_is_mret;	
+  wire        _isu_io_out_bits_is_csr;	
+  wire [31:0] _isu_io_out_bits_mtvec;	
+  wire [31:0] _isu_io_out_bits_epc;	
+  wire [31:0] _isu_io_out_bits_rd1;	
+  wire        _isu_io_out_bits_mem_rd_en;	
+  wire        _isu_io_out_bits_mem_wr_en;	
+  wire        _isu_io_out_bits_rf_wr_en;	
+  wire        _isu_io_out_bits_finish_load;	
+  wire        _isu_io_out_bits_is_cmp;	
+  wire [31:0] _exu_io_out_bits_alu_out;	
+  wire [31:0] _exu_io_out_bits_data;	
+  wire        _exu_io_out_bits_mem_wr_en;	
+  wire        _exu_io_out_bits_mem_rd_en;	
+  wire        _exu_io_out_bits_rf_wr_en;	
+  wire [31:0] _exu_io_out_bits_len;	
+  wire        _exu_io_out_bits_load_unsign;	
+  wire        _exu_io_out_bits_jump_jalr;	
+  wire        _exu_io_out_bits_jump_en;	
+  wire [31:0] _exu_io_out_bits_imm;	
+  wire        _exu_io_out_bits_is_ecall;	
+  wire        _exu_io_out_bits_is_mret;	
+  wire        _exu_io_out_bits_is_csr;	
+  wire [31:0] _exu_io_out_bits_mtvec;	
+  wire [31:0] _exu_io_out_bits_epc;	
+  wire [31:0] _exu_io_out_bits_rd1;	
+  wire        _exu_io_out_bits_is_cmp;	
   wire [31:0] _idu_io_out_bits_rs1;	
   wire [31:0] _idu_io_out_bits_rs2;	
   wire [31:0] _idu_io_out_bits_imm;	
@@ -1075,69 +1373,183 @@ module top(
   wire        _idu_io_out_bits_alu_a_sel;	
   wire        _idu_io_out_bits_alu_b_sel;	
   wire [31:0] _idu_io_out_bits_pc;	
-  wire        _idu_io_jump_jalr;	
-  wire        _idu_io_jump_en;	
-  wire [31:0] _idu_io_imm;	
-  wire        _idu_io_is_ecall;	
-  wire        _idu_io_is_mret;	
-  wire [31:0] _idu_io_mtvec;	
-  wire [31:0] _idu_io_epc;	
-  wire [31:0] _idu_io_rd1;	
+  wire        _idu_io_out_bits_jump_en;	
+  wire        _idu_io_out_bits_jump_jalr;	
+  wire        _idu_io_out_bits_is_ecall;	
+  wire        _idu_io_out_bits_is_mret;	
+  wire        _idu_io_out_bits_is_csr;	
+  wire [31:0] _idu_io_out_bits_mtvec;	
+  wire [31:0] _idu_io_out_bits_epc;	
+  wire        _idu_io_out_bits_mem_rd_en;	
+  wire        _idu_io_out_bits_mem_wr_en;	
+  wire        _idu_io_out_bits_rf_wr_en;	
+  wire [31:0] _idu_io_out_bits_len;	
+  wire        _idu_io_out_bits_load_unsign;	
+  wire        _idu_io_out_bits_is_cmp;	
   wire [31:0] _ifu_io_out_bits_inst;	
   wire [31:0] _ifu_io_out_bits_pc;	
   IFU ifu (	
+    .clock            (clock),
+    .reset            (reset),
     .io_pc            (_pc_io_next_pc),	
     .io_out_bits_inst (_ifu_io_out_bits_inst),
     .io_out_bits_pc   (_ifu_io_out_bits_pc)
   );
   IDU idu (	
-    .clock                 (clock),
-    .reset                 (reset),
-    .io_in_bits_inst       (_ifu_io_out_bits_inst),	
-    .io_in_bits_pc         (_ifu_io_out_bits_pc),	
-    .io_out_bits_rs1       (_idu_io_out_bits_rs1),
-    .io_out_bits_rs2       (_idu_io_out_bits_rs2),
-    .io_out_bits_imm       (_idu_io_out_bits_imm),
-    .io_out_bits_alu_sel   (_idu_io_out_bits_alu_sel),
-    .io_out_bits_alu_a_sel (_idu_io_out_bits_alu_a_sel),
-    .io_out_bits_alu_b_sel (_idu_io_out_bits_alu_b_sel),
-    .io_out_bits_pc        (_idu_io_out_bits_pc),
-    .io_alu_rsl            (_exu_io_alu_rsl),	
-    .io_jump_jalr          (_idu_io_jump_jalr),
-    .io_jump_en            (_idu_io_jump_en),
-    .io_imm                (_idu_io_imm),
-    .io_is_ecall           (_idu_io_is_ecall),
-    .io_is_mret            (_idu_io_is_mret),
-    .io_mtvec              (_idu_io_mtvec),
-    .io_epc                (_idu_io_epc),
-    .io_rd1                (_idu_io_rd1)
+    .clock                   (clock),
+    .reset                   (reset),
+    .io_in_bits_inst         (_ifu_io_out_bits_inst),	
+    .io_in_bits_pc           (_ifu_io_out_bits_pc),	
+    .io_out_bits_rs1         (_idu_io_out_bits_rs1),
+    .io_out_bits_rs2         (_idu_io_out_bits_rs2),
+    .io_out_bits_imm         (_idu_io_out_bits_imm),
+    .io_out_bits_alu_sel     (_idu_io_out_bits_alu_sel),
+    .io_out_bits_alu_a_sel   (_idu_io_out_bits_alu_a_sel),
+    .io_out_bits_alu_b_sel   (_idu_io_out_bits_alu_b_sel),
+    .io_out_bits_pc          (_idu_io_out_bits_pc),
+    .io_out_bits_jump_en     (_idu_io_out_bits_jump_en),
+    .io_out_bits_jump_jalr   (_idu_io_out_bits_jump_jalr),
+    .io_out_bits_is_ecall    (_idu_io_out_bits_is_ecall),
+    .io_out_bits_is_mret     (_idu_io_out_bits_is_mret),
+    .io_out_bits_is_csr      (_idu_io_out_bits_is_csr),
+    .io_out_bits_mtvec       (_idu_io_out_bits_mtvec),
+    .io_out_bits_epc         (_idu_io_out_bits_epc),
+    .io_out_bits_mem_rd_en   (_idu_io_out_bits_mem_rd_en),
+    .io_out_bits_mem_wr_en   (_idu_io_out_bits_mem_wr_en),
+    .io_out_bits_rf_wr_en    (_idu_io_out_bits_rf_wr_en),
+    .io_out_bits_len         (_idu_io_out_bits_len),
+    .io_out_bits_load_unsign (_idu_io_out_bits_load_unsign),
+    .io_out_bits_is_cmp      (_idu_io_out_bits_is_cmp),
+    .io_alu_rsl              (_wbu_io_alu_out),	
+    .io_dm_out               (_wbu_io_dm_out),	
+    .io_wbu_valid            (_wbu_io_wbu_valid)	
   );
   EXU exu (	
-    .io_in_bits_rs1       (_idu_io_out_bits_rs1),	
-    .io_in_bits_rs2       (_idu_io_out_bits_rs2),	
-    .io_in_bits_imm       (_idu_io_out_bits_imm),	
-    .io_in_bits_alu_sel   (_idu_io_out_bits_alu_sel),	
-    .io_in_bits_alu_a_sel (_idu_io_out_bits_alu_a_sel),	
-    .io_in_bits_alu_b_sel (_idu_io_out_bits_alu_b_sel),	
-    .io_in_bits_pc        (_idu_io_out_bits_pc),	
-    .io_alu_rsl           (_exu_io_alu_rsl)
+    .io_in_bits_rs1          (_idu_io_out_bits_rs1),	
+    .io_in_bits_rs2          (_idu_io_out_bits_rs2),	
+    .io_in_bits_imm          (_idu_io_out_bits_imm),	
+    .io_in_bits_alu_sel      (_idu_io_out_bits_alu_sel),	
+    .io_in_bits_alu_a_sel    (_idu_io_out_bits_alu_a_sel),	
+    .io_in_bits_alu_b_sel    (_idu_io_out_bits_alu_b_sel),	
+    .io_in_bits_pc           (_idu_io_out_bits_pc),	
+    .io_in_bits_jump_en      (_idu_io_out_bits_jump_en),	
+    .io_in_bits_jump_jalr    (_idu_io_out_bits_jump_jalr),	
+    .io_in_bits_is_ecall     (_idu_io_out_bits_is_ecall),	
+    .io_in_bits_is_mret      (_idu_io_out_bits_is_mret),	
+    .io_in_bits_is_csr       (_idu_io_out_bits_is_csr),	
+    .io_in_bits_mtvec        (_idu_io_out_bits_mtvec),	
+    .io_in_bits_epc          (_idu_io_out_bits_epc),	
+    .io_in_bits_mem_rd_en    (_idu_io_out_bits_mem_rd_en),	
+    .io_in_bits_mem_wr_en    (_idu_io_out_bits_mem_wr_en),	
+    .io_in_bits_rf_wr_en     (_idu_io_out_bits_rf_wr_en),	
+    .io_in_bits_len          (_idu_io_out_bits_len),	
+    .io_in_bits_load_unsign  (_idu_io_out_bits_load_unsign),	
+    .io_in_bits_is_cmp       (_idu_io_out_bits_is_cmp),	
+    .io_out_bits_alu_out     (_exu_io_out_bits_alu_out),
+    .io_out_bits_data        (_exu_io_out_bits_data),
+    .io_out_bits_mem_wr_en   (_exu_io_out_bits_mem_wr_en),
+    .io_out_bits_mem_rd_en   (_exu_io_out_bits_mem_rd_en),
+    .io_out_bits_rf_wr_en    (_exu_io_out_bits_rf_wr_en),
+    .io_out_bits_len         (_exu_io_out_bits_len),
+    .io_out_bits_load_unsign (_exu_io_out_bits_load_unsign),
+    .io_out_bits_jump_jalr   (_exu_io_out_bits_jump_jalr),
+    .io_out_bits_jump_en     (_exu_io_out_bits_jump_en),
+    .io_out_bits_imm         (_exu_io_out_bits_imm),
+    .io_out_bits_is_ecall    (_exu_io_out_bits_is_ecall),
+    .io_out_bits_is_mret     (_exu_io_out_bits_is_mret),
+    .io_out_bits_is_csr      (_exu_io_out_bits_is_csr),
+    .io_out_bits_mtvec       (_exu_io_out_bits_mtvec),
+    .io_out_bits_epc         (_exu_io_out_bits_epc),
+    .io_out_bits_rd1         (_exu_io_out_bits_rd1),
+    .io_out_bits_is_cmp      (_exu_io_out_bits_is_cmp),
+    .io_alu_rsl              (io_alu_rsl)
+  );
+  ISU isu (	
+    .clock                   (clock),
+    .reset                   (reset),
+    .io_in_bits_alu_out      (_exu_io_out_bits_alu_out),	
+    .io_in_bits_data         (_exu_io_out_bits_data),	
+    .io_in_bits_mem_wr_en    (_exu_io_out_bits_mem_wr_en),	
+    .io_in_bits_mem_rd_en    (_exu_io_out_bits_mem_rd_en),	
+    .io_in_bits_rf_wr_en     (_exu_io_out_bits_rf_wr_en),	
+    .io_in_bits_len          (_exu_io_out_bits_len),	
+    .io_in_bits_load_unsign  (_exu_io_out_bits_load_unsign),	
+    .io_in_bits_jump_jalr    (_exu_io_out_bits_jump_jalr),	
+    .io_in_bits_jump_en      (_exu_io_out_bits_jump_en),	
+    .io_in_bits_imm          (_exu_io_out_bits_imm),	
+    .io_in_bits_is_ecall     (_exu_io_out_bits_is_ecall),	
+    .io_in_bits_is_mret      (_exu_io_out_bits_is_mret),	
+    .io_in_bits_is_csr       (_exu_io_out_bits_is_csr),	
+    .io_in_bits_mtvec        (_exu_io_out_bits_mtvec),	
+    .io_in_bits_epc          (_exu_io_out_bits_epc),	
+    .io_in_bits_rd1          (_exu_io_out_bits_rd1),	
+    .io_in_bits_is_cmp       (_exu_io_out_bits_is_cmp),	
+    .io_out_bits_dm_out      (_isu_io_out_bits_dm_out),
+    .io_out_bits_alu_out     (_isu_io_out_bits_alu_out),
+    .io_out_bits_jump_jalr   (_isu_io_out_bits_jump_jalr),
+    .io_out_bits_jump_en     (_isu_io_out_bits_jump_en),
+    .io_out_bits_imm         (_isu_io_out_bits_imm),
+    .io_out_bits_is_ecall    (_isu_io_out_bits_is_ecall),
+    .io_out_bits_is_mret     (_isu_io_out_bits_is_mret),
+    .io_out_bits_is_csr      (_isu_io_out_bits_is_csr),
+    .io_out_bits_mtvec       (_isu_io_out_bits_mtvec),
+    .io_out_bits_epc         (_isu_io_out_bits_epc),
+    .io_out_bits_rd1         (_isu_io_out_bits_rd1),
+    .io_out_bits_mem_rd_en   (_isu_io_out_bits_mem_rd_en),
+    .io_out_bits_mem_wr_en   (_isu_io_out_bits_mem_wr_en),
+    .io_out_bits_rf_wr_en    (_isu_io_out_bits_rf_wr_en),
+    .io_out_bits_finish_load (_isu_io_out_bits_finish_load),
+    .io_out_bits_is_cmp      (_isu_io_out_bits_is_cmp)
+  );
+  WBU wbu (	
+    .clock                  (clock),
+    .reset                  (reset),
+    .io_in_bits_dm_out      (_isu_io_out_bits_dm_out),	
+    .io_in_bits_alu_out     (_isu_io_out_bits_alu_out),	
+    .io_in_bits_jump_jalr   (_isu_io_out_bits_jump_jalr),	
+    .io_in_bits_jump_en     (_isu_io_out_bits_jump_en),	
+    .io_in_bits_imm         (_isu_io_out_bits_imm),	
+    .io_in_bits_is_ecall    (_isu_io_out_bits_is_ecall),	
+    .io_in_bits_is_mret     (_isu_io_out_bits_is_mret),	
+    .io_in_bits_is_csr      (_isu_io_out_bits_is_csr),	
+    .io_in_bits_mtvec       (_isu_io_out_bits_mtvec),	
+    .io_in_bits_epc         (_isu_io_out_bits_epc),	
+    .io_in_bits_rd1         (_isu_io_out_bits_rd1),	
+    .io_in_bits_mem_rd_en   (_isu_io_out_bits_mem_rd_en),	
+    .io_in_bits_mem_wr_en   (_isu_io_out_bits_mem_wr_en),	
+    .io_in_bits_rf_wr_en    (_isu_io_out_bits_rf_wr_en),	
+    .io_in_bits_finish_load (_isu_io_out_bits_finish_load),	
+    .io_in_bits_is_cmp      (_isu_io_out_bits_is_cmp),	
+    .io_out_bits_jump_jalr  (_wbu_io_out_bits_jump_jalr),
+    .io_out_bits_jump_en    (_wbu_io_out_bits_jump_en),
+    .io_out_bits_imm        (_wbu_io_out_bits_imm),
+    .io_out_bits_is_ecall   (_wbu_io_out_bits_is_ecall),
+    .io_out_bits_is_mret    (_wbu_io_out_bits_is_mret),
+    .io_out_bits_mtvec      (_wbu_io_out_bits_mtvec),
+    .io_out_bits_epc        (_wbu_io_out_bits_epc),
+    .io_out_bits_rd1        (_wbu_io_out_bits_rd1),
+    .io_dm_out              (_wbu_io_dm_out),
+    .io_alu_out             (_wbu_io_alu_out),
+    .io_wbu_valid           (_wbu_io_wbu_valid)
   );
   PC pc (	
-    .clock        (clock),
-    .reset        (reset),
-    .io_jump_jalr (_idu_io_jump_jalr),	
-    .io_jump_en   (_idu_io_jump_en),	
-    .io_imm       (_idu_io_imm),	
-    .io_is_ecall  (_idu_io_is_ecall),	
-    .io_is_mret   (_idu_io_is_mret),	
-    .io_mtvec     (_idu_io_mtvec),	
-    .io_epc       (_idu_io_epc),	
-    .io_rd1       (_idu_io_rd1),	
-    .io_next_pc   (_pc_io_next_pc)
+    .clock                (clock),
+    .reset                (reset),
+    .io_next_pc           (_pc_io_next_pc),
+    .io_in_bits_jump_jalr (_wbu_io_out_bits_jump_jalr),	
+    .io_in_bits_jump_en   (_wbu_io_out_bits_jump_en),	
+    .io_in_bits_imm       (_wbu_io_out_bits_imm),	
+    .io_in_bits_is_ecall  (_wbu_io_out_bits_is_ecall),	
+    .io_in_bits_is_mret   (_wbu_io_out_bits_is_mret),	
+    .io_in_bits_mtvec     (_wbu_io_out_bits_mtvec),	
+    .io_in_bits_epc       (_wbu_io_out_bits_epc),	
+    .io_in_bits_rd1       (_wbu_io_out_bits_rd1),	
+    .io_wbu_valid         (_wbu_io_wbu_valid),	
+    .io_diff_test         (io_diff_test)
   );
-  assign io_pc = _ifu_io_out_bits_pc;	
-  assign io_alu_rsl = _exu_io_alu_rsl;	
+  assign io_pc = _idu_io_out_bits_pc;	
   assign io_inst = _ifu_io_out_bits_inst;	
+  assign io_imm = _idu_io_out_bits_imm;	
 endmodule
 
 

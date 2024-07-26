@@ -43,6 +43,5 @@ class ALU extends Module{
 
     val res = VecInit(Seq(add, sub, umovl, umovr, smovr, not, rd2, and, or, xor, cmpu, cmp, eql))
 
-    io.rsl := Mux1H(io.alu_sel, res)
+        io.rsl := Mux1H(io.alu_sel, res)  
 }
-

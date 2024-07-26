@@ -69,24 +69,22 @@ class REGISTERFILE extends Module{
             CsrReg(0) := CsrReg(0) | (MPIE << 3)
             CsrReg(0) := CsrReg(0) | "h00000080".U
             io.epc := CsrReg(2.U)
-    }
-
-    when(io.is_csr){
-        when(fun3 === "b001".U){   //csrrw
-            FileReg(rd) := CsrReg(csr_sel)
-            CsrReg(csr_sel) := FileReg(rs1)
-    
-        }.elsewhen(fun3 === "b010".U){   //csrrs
-            FileReg(rd):= CsrReg(csr_sel)
-            CsrReg(csr_sel) := CsrReg(csr_sel) | FileReg(rs1)
-      
-        }.elsewhen(fun3 === "b011".U){   //csrrc
-            FileReg(rd) := CsrReg(csr_sel)
-            CsrReg(csr_sel) := CsrReg(csr_sel) & (~FileReg(rs1))
-     
-        }.otherwise{    //无操作，暂定初始化mstatus
-            CsrReg(0) := "h00001800".U
-        }
+    }.elsewhen(io.is_csr){
+            when(fun3 === "b001".U){   //csrrw
+                FileReg(rd) := CsrReg(csr_sel)
+                CsrReg(csr_sel) := FileReg(rs1)
+            
+            }.elsewhen(fun3 === "b010".U){   //csrrs
+                FileReg(rd):= CsrReg(csr_sel)
+                CsrReg(csr_sel) := CsrReg(csr_sel) | FileReg(rs1)
+            
+            }.elsewhen(fun3 === "b011".U){   //csrrc
+                FileReg(rd) := CsrReg(csr_sel)
+                CsrReg(csr_sel) := CsrReg(csr_sel) & (~FileReg(rs1))
+                
+            }.otherwise{    //无操作，暂定初始化mstatus
+                CsrReg(0) := "h00001800".U
+            }
     }.otherwise{
         io.rd1 := FileReg(rs1)
         io.rd2 := FileReg(rs2)

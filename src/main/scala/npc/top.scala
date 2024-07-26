@@ -10,48 +10,50 @@ class top extends Module{
         val pc = Output(UInt(32.W))
         val alu_rsl = Output(UInt(32.W))
         val inst =  Output(UInt(32.W))
+        val imm = Output(UInt(32.W))
+        val diff_test = Output(Bool())
 
     })
 
     val ifu = Module(new IFU)
     val idu = Module(new IDU)
     val exu = Module(new EXU)
+    val isu = Module(new ISU)
+    val wbu = Module(new WBU)
     val pc = Module(new PC)
 
     StageConnect(ifu.io.out, idu.io.in)
     StageConnect(idu.io.out, exu.io.in)
+    StageConnect(exu.io.out, isu.io.in)
+    StageConnect(isu.io.out, wbu.io.in)
+    StageConnect(wbu.io.out, pc.io.in)
 
-    ifu.io.out.ready := true.B
-    idu.io.in.valid := true.B
-    idu.io.out.ready := true.B
-    exu.io.in.valid := true.B
-
+    
     ifu.io.pc := pc.io.next_pc
+    // pc.io.no_ld := idu.io.out.valid
 
-    pc.io.jump_jalr := idu.io.jump_jalr
-    pc.io.jump_en := idu.io.jump_en
-    pc.io.imm := idu.io.imm
-    pc.io.is_ecall := idu.io.is_ecall
-    pc.io.mtvec := idu.io.mtvec
-    pc.io.rd1 := idu.io.rd1
-    pc.io.is_mret := idu.io.is_mret
-    pc.io.epc := idu.io.epc
-    idu.io.alu_rsl := exu.io.alu_rsl
+    idu.io.alu_rsl := wbu.io.alu_out
+    idu.io.dm_out := wbu.io.dm_out 
+    idu.io.wbu_valid := wbu.io.wbu_valid
+    pc.io.wbu_valid := wbu.io.wbu_valid
+    isu.io.wbu_valid := wbu.io.wbu_valid
+
     
     
     
 
 
 //for sdb    
-    io.pc := ifu.io.out.bits.pc
+    io.pc := exu.io.in.bits.pc
     io.alu_rsl := exu.io.alu_rsl
     io.inst := ifu.io.out.bits.inst
-
+    io.imm := idu.io.out.bits.imm
+    io.diff_test := pc.io.diff_test
 }
 
 object StageConnect {
   def apply[T <: Data](left: DecoupledIO[T], right: DecoupledIO[T]) = {
-    val arch = "single"
+    val arch = "multi"
     if      (arch == "single")   { right.bits := left.bits }
     else if (arch == "multi")    { right <> left }
     else if (arch == "pipeline") { right <> RegEnable(left, left.fire) }

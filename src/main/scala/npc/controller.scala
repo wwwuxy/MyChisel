@@ -2,6 +2,7 @@ package npc
 
 import chisel3._
 import chisel3.util._
+import javax.xml.transform.OutputKeys
 
 class CONTORLLER extends Module{
     val io = IO(new Bundle {
@@ -23,6 +24,7 @@ class CONTORLLER extends Module{
         val is_ecall = Output(Bool())
         val is_csr = Output(Bool())
         val is_mret = Output(Bool())
+        val is_cmp = Output(Bool())
         // val nemutrap = Output(Bool())
     })
 
@@ -32,8 +34,8 @@ class CONTORLLER extends Module{
     val op1_unsigned = io.rs1
     val op2_unsigned = io.rs2
 
-
 //inital enable signal
+    io.is_cmp := false.B
     io.is_mret := false.B
     io.is_csr := false.B
     io.is_ecall := false.B
@@ -146,6 +148,7 @@ class CONTORLLER extends Module{
         io.alu_a_sel := false.B
         io.alu_b_sel := false.B
         io.jump_en := (op1_signed === op2_signed)
+        io.is_cmp := true.B
     }
 //bne
     when(isB_type && (fun3 === "b001".U)){
@@ -153,6 +156,7 @@ class CONTORLLER extends Module{
         io.alu_a_sel := false.B
         io.alu_b_sel := false.B
         io.jump_en := (op1_signed =/= op2_signed)
+        io.is_cmp := true.B
     }
 //blt
     when(isB_type && (fun3 === "b100".U)){
@@ -160,6 +164,7 @@ class CONTORLLER extends Module{
         io.alu_a_sel := false.B
         io.alu_b_sel := false.B
         io.jump_en := (op1_signed < op2_signed)
+        io.is_cmp := true.B
     }
 //bge
     when(isB_type && (fun3 === "b101".U)){
@@ -167,6 +172,7 @@ class CONTORLLER extends Module{
         io.alu_a_sel := false.B
         io.alu_b_sel := false.B
         io.jump_en := (op1_signed >= op2_signed)
+        io.is_cmp := true.B
     }
 //btlu
     when(isB_type && (fun3 === "b110".U)){
@@ -174,6 +180,7 @@ class CONTORLLER extends Module{
         io.alu_a_sel := false.B
         io.alu_b_sel := false.B
         io.jump_en := (op1_unsigned < op2_unsigned)
+        io.is_cmp := true.B
     }
 //bgeu
     when(isB_type && (fun3 === "b111".U)){
@@ -181,6 +188,7 @@ class CONTORLLER extends Module{
         io.alu_a_sel := false.B
         io.alu_b_sel := false.B
         io.jump_en := (op1_unsigned >= op2_unsigned)
+        io.is_cmp := true.B
     }
 //lb
     when(is_load && (fun3 === "b000".U)){

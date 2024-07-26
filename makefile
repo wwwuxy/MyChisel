@@ -12,4 +12,4 @@ git:
 	git add .
 	git commit
 push:
-	git push
+	git push origin multi-cycle
