@@ -12,7 +12,7 @@ class top extends Module{
         val inst =  Output(UInt(32.W))
         val imm = Output(UInt(32.W))
         val diff_test = Output(Bool())
-
+        val wbu_valid = Output(Bool())
     })
 
     val ifu = Module(new IFU)
@@ -49,6 +49,7 @@ class top extends Module{
     io.inst := ifu.io.out.bits.inst
     io.imm := idu.io.out.bits.imm
     io.diff_test := pc.io.diff_test
+    io.wbu_valid := wbu.io.wbu_valid
 }
 
 object StageConnect {

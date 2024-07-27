@@ -61,6 +61,8 @@ class IDU extends Module{
         io.out.bits.load_unsign := Contorller.io.load_unsign
         io.out.bits.rf_wr_en := Contorller.io.rf_wr_en
         io.out.bits.is_csr := Contorller.io.is_csr
+        io.out.bits.is_load := Contorller.io.is_load
+        io.out.bits.isS_type := Contorller.io.isS_type
 //for wbu
         io.out.bits.is_cmp := Contorller.io.is_cmp
 

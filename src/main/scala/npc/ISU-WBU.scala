@@ -21,4 +21,7 @@ class ISU_WBU extends Bundle{
     val finish_load = Bool()
 //for wbu
     val is_cmp = Output(Bool())
+    val is_load = Bool()
+    val isS_type = Bool()
+    val can_wirte = Bool()
 }

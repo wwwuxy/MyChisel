@@ -17,7 +17,9 @@ class PC extends Module{
     val jump_pc = pc + io.in.bits.imm
     val jalr_pc = io.in.bits.rd1 + io.in.bits.imm
 
+
     io.diff_test := io.wbu_valid
+
     when(io.wbu_valid){
         when(io.in.bits.jump_en){
             pc := jump_pc

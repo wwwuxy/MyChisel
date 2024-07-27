@@ -23,6 +23,9 @@ class IDU_EXU extends Bundle{
     val rf_wr_en = Output(Bool())
     val len = Output(UInt(32.W))
     val load_unsign = Output(Bool())
+//for isu
+    val is_load = Output(Bool())
+    val isS_type = Output(Bool())
 //for wbu
     val is_cmp = Output(Bool())
 } 

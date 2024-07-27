@@ -4,5 +4,6 @@
     },
     "files.associations": {
         "new": "cpp"
-    }
+    },
+    "digital-ide.function.lsp.linter.vlog.diagnostor": "default"
 }

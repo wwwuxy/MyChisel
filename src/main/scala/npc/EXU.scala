@@ -40,8 +40,12 @@ class EXU extends Module{
         io.out.bits.epc := io.in.bits.epc
         io.out.bits.rd1 := io.in.bits.rs1
 
+//for isu
+        io.out.bits.is_load := io.in.bits.is_load
+        io.out.bits.isS_type := io.in.bits.isS_type
 //for wbu
         io.out.bits.is_cmp := io.in.bits.is_cmp
+
                 
         io.out.valid := io.in.valid
         io.in.ready := io.out.ready

@@ -15,16 +15,8 @@ class WBU extends Module{
 //for regfiles
     io.dm_out := io.in.bits.dm_out
     io.alu_out := io.in.bits.alu_out
-    
-    val wbu_reg = RegInit(false.B)
-    io.wbu_valid := false.B
 
-    when(!wbu_reg){
-        io.wbu_valid := (io.in.bits.mem_rd_en && io.in.bits.finish_load) || (!io.in.bits.mem_rd_en && io.in.bits.rf_wr_en || io.in.bits.mem_wr_en || io.in.bits.jump_en || io.in.bits.is_cmp || io.in.bits.is_ecall || io.in.bits.is_csr || io.in.bits.is_mret)
-        wbu_reg := io.wbu_valid
-    }.otherwise{
-        wbu_reg := false.B
-    }
+    io.wbu_valid := (io.in.bits.is_load && io.in.bits.finish_load) || (io.in.bits.isS_type && io.in.bits.can_wirte) || (!io.in.bits.is_load && !io.in.bits.isS_type && io.in.valid)
 
 //for pc
     io.out.bits.imm := io.in.bits.imm

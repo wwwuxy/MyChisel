@@ -1,61 +1,107 @@
 module Date_Memory(
     input clk,
-    input [31:0] alu_out,
-    input [31:0] data,
-    input wr_en,    
-    input rd_en,
+    input arvalid,
+    input [31:0] araddr,
+    input load_unsign,
+    output arready,
+
+    output reg [31:0] rdata,
+    output reg rresp,
+    output reg rvalid,
+    input rready,
+
+    input awvalid,
+    input [31:0] awaddr,
+    output awready,
+
+    input wvalid,
+    input [31:0] wdata,
     input [31:0] len,
-    input load_unsign,    
-    output reg [31:0] dm_out
+    output wready,
+
+    output reg bresp,
+    output reg bvalid,
+    input bready
 );
 
     import "DPI-C" function int mem_read(input int addr, int len);
-
     import "DPI-C" function void mem_write(input int addr, int len, input int data);
 
-    always @(*) begin
+    reg [31:0] data_delay;  //模拟访存延迟
+    assign rdata = data_delay;
+
+    assign arready = 1;     //ready都是1
+    assign awready = 1;
+    assign wready = 1;
+
+    always @(posedge clk) begin
         reg [31:0] temp_data;
-        if (rd_en) begin
-            if(load_unsign) begin
-                if(len == 1) begin
-                    dm_out = {24'b0, mem_read(alu_out, 1)};
+
+        if (arvalid && arready) begin
+            if (rready && !rvalid) begin    //读握手成功
+            $display("araddr = 0x%h\t", araddr);
+                rresp <= 1;
+                rvalid <= 1;
+                if(load_unsign) begin
+                    if(len == 1) begin
+                        data_delay <= {24'b0, mem_read(araddr, 1)};
+                    end
+                    else if(len == 2) begin
+                        data_delay <= {16'b0, mem_read(araddr, 2)};
+                    end
+                    else if(len == 4) begin
+                        data_delay <= mem_read(araddr, 4);
+                    end
                 end
-                else if(len == 2) begin
-                    dm_out = {16'b0, mem_read(alu_out, 2)};
-                end
-                else if(len == 4) begin
-                    dm_out = mem_read(alu_out, 4);
+                else begin
+                    temp_data = mem_read(araddr, len);
+                    if(len == 1) begin
+                        data_delay <= {{24{temp_data[7]}}, temp_data[7:0]};
+                    end
+                    else if(len == 2) begin
+                        data_delay <= {{16{temp_data[15]}}, temp_data[15:0]};
+                    end
+                    else if(len == 4) begin
+                        data_delay <= mem_read(araddr, 4);
+                    end
                 end
             end
-            else begin
-                temp_data = mem_read(alu_out, len);
-                if(len == 1) begin
-                    dm_out = {{24{temp_data[7]}}, temp_data[7:0]};
-                end
-                else if(len == 2) begin
-                    dm_out = {{16{temp_data[15]}}, temp_data[15:0]};
-                end
-                else if(len == 4) begin
-                    dm_out = mem_read(alu_out, 4);
-                end
-            
-            end
         end
-        else begin
-            dm_out = alu_out;
-        end
+        
       
-        if (wr_en) begin
-            if(len == 1) begin
-                mem_write(alu_out, 1, data);
-            end
-            else if(len == 2) begin
-                mem_write(alu_out, 2, data);
-            end
-            else if(len == 4) begin
-                mem_write(alu_out, 4, data);
+        if(awvalid && awready) begin
+            if (wvalid && wready) begin     //写握手成功
+                if(len == 1) begin
+                    mem_write(awaddr, 1, wdata);
+                end
+                else if(len == 2) begin
+                    mem_write(awaddr, 2, wdata);
+                end
+                else if(len == 4) begin
+                    mem_write(awaddr, 4, wdata);
+                end
+                bvalid <= 1;
             end
         end
+
+        if(rvalid && rready) begin  //读取成功,清除信号
+            rvalid <= 0;
+            rresp <= 0;
+        end
+
+        if(bvalid && bready) begin  //写入成功,清除信号
+            bresp <= 1;
+            bvalid <= 0;
+        end
+
+        if(bresp) begin
+            bresp <= 0;
+        end
+        $display("arvalid = %d\t", arvalid);
+        $display("arready = %d\t", arready);
+        $display("rvalid = %d\t", rvalid);
+        $display("rready = %d\t", rready);
+        $display("rresp = %d\t", rresp);
     end
 
 

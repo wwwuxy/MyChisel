@@ -25,6 +25,8 @@ class CONTORLLER extends Module{
         val is_csr = Output(Bool())
         val is_mret = Output(Bool())
         val is_cmp = Output(Bool())
+        val is_load = Output(Bool())
+        val isS_type = Output(Bool()) 
         // val nemutrap = Output(Bool())
     })
 
@@ -35,6 +37,8 @@ class CONTORLLER extends Module{
     val op2_unsigned = io.rs2
 
 //inital enable signal
+    io.isS_type := false.B
+    io.is_load := false.B
     io.is_cmp := false.B
     io.is_mret := false.B
     io.is_csr := false.B

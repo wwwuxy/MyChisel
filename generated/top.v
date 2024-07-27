@@ -45,21 +45,30 @@ module IFU(
   input         clock,	
                 reset,	
   input  [31:0] io_pc,	
+  output        io_out_valid,	
   output [31:0] io_out_bits_inst,	
                 io_out_bits_pc	
 );
 
   wire [31:0] _imem_inst;	
+  wire        _imem_arready;	
+  wire        _imem_rresp;	
+  wire        _imem_rvalid;	
+  reg         arvalid;	
+  reg  [31:0] IPC;	
   reg  [31:0] IR;	
-  reg  [31:0] inst_reg;	
   always @(posedge clock) begin	
     if (reset) begin	
+      arvalid <= 1'h0;	
+      IPC <= 32'h0;	
       IR <= 32'h0;	
-      inst_reg <= 32'h0;	
     end
     else begin	
-      IR <= io_pc;	
-      inst_reg <= _imem_inst;	
+      arvalid <= ~(arvalid & _imem_arready) & (io_pc != IPC & ~_imem_rresp | arvalid);	
+      if (_imem_rvalid & _imem_rresp) begin	
+        IPC <= io_pc;	
+        IR <= _imem_inst;	
+      end
     end
   end 
   `ifdef ENABLE_INITIAL_REG_	
@@ -67,16 +76,17 @@ module IFU(
       `FIRRTL_BEFORE_INITIAL	
     `endif 
     initial begin	
-      automatic logic [31:0] _RANDOM[0:1];	
+      automatic logic [31:0] _RANDOM[0:5];	
       `ifdef INIT_RANDOM_PROLOG_	
         `INIT_RANDOM_PROLOG_	
       `endif 
       `ifdef RANDOMIZE_REG_INIT	
-        for (logic [1:0] i = 2'h0; i < 2'h2; i += 2'h1) begin
-          _RANDOM[i[0]] = `RANDOM;	
+        for (logic [2:0] i = 3'h0; i < 3'h6; i += 3'h1) begin
+          _RANDOM[i] = `RANDOM;	
         end	
-        IR = _RANDOM[1'h0];	
-        inst_reg = _RANDOM[1'h1];	
+        arvalid = _RANDOM[3'h0][0];	
+        IPC = {_RANDOM[3'h3][31:5], _RANDOM[3'h4][4:0]};	
+        IR = {_RANDOM[3'h4][31:5], _RANDOM[3'h5][4:0]};	
       `endif 
     end 
     `ifdef FIRRTL_AFTER_INITIAL	
@@ -84,11 +94,28 @@ module IFU(
     `endif 
   `endif 
   Inst_Memory imem (	
-    .pc   (io_pc),
-    .inst (_imem_inst)
+    .clk     (clock),
+    .pc      (io_pc),
+    .inst    (_imem_inst),
+    .arvalid (arvalid),	
+    .arready (_imem_arready),
+    .rresp   (_imem_rresp),
+    .rvalid  (_imem_rvalid),
+    .rready  (1'h1),	
+    .awaddr  (32'h0),	
+    .awvalid (1'h0),	
+    .awready (/* unused */),
+    .wdata   (32'h0),	
+    .wstrb   (32'h0),	
+    .wvalid  (1'h0),	
+    .wready  (/* unused */),
+    .bresp   (/* unused */),
+    .bvalid  (/* unused */),
+    .bready  (1'h0)	
   );
-  assign io_out_bits_inst = inst_reg;	
-  assign io_out_bits_pc = IR;	
+  assign io_out_valid = _imem_rresp;	
+  assign io_out_bits_inst = IR;	
+  assign io_out_bits_pc = IPC;	
 endmodule
 
 module CONTORLLER(	
@@ -100,7 +127,6 @@ module CONTORLLER(
   output        io_alu_a_sel,	
                 io_alu_b_sel,	
                 io_mem_wr_en,	
-                io_mem_rd_en,	
   output [12:0] io_alu_sel,	
   output        io_jump_en,	
                 io_jump_jalr,	
@@ -109,8 +135,7 @@ module CONTORLLER(
   output        io_load_unsign,	
                 io_is_ecall,	
                 io_is_csr,	
-                io_is_mret,	
-                io_is_cmp	
+                io_is_mret	
 );
 
   wire isR_type = io_inst[6:0] == 7'h33;	
@@ -187,7 +212,6 @@ module CONTORLLER(
     _GEN_39 | _GEN_38 | _GEN_37 | _GEN_36 | _GEN_34 | _GEN_33 | _GEN_32 | _GEN_31
     | _GEN_30 | _GEN_29;	
   assign io_mem_wr_en = _GEN_16 | _GEN_15 | _GEN_14;	
-  assign io_mem_rd_en = _GEN_12 | _GEN_11 | _GEN_10 | _GEN_9 | _GEN_8;	
   assign io_alu_sel =
     _GEN_39
       ? 13'h80
@@ -292,7 +316,6 @@ module CONTORLLER(
     & (_io_is_csr_T_1 | _io_is_csr_T_2 | _io_is_csr_T_4 | _io_is_csr_T_6 | _io_is_csr_T_8
        | (&(io_inst[14:12])));	
   assign io_is_mret = io_inst == 32'h30200073;	
-  assign io_is_cmp = _GEN_7 | _GEN_6 | _GEN_5 | _GEN_4 | _GEN_2 | _GEN_1;	
 endmodule
 
 module REGISTERFILE(	
@@ -896,8 +919,10 @@ endmodule
 module IDU(	
   input         clock,	
                 reset,	
+                io_in_valid,	
   input  [31:0] io_in_bits_inst,	
                 io_in_bits_pc,	
+  output        io_out_valid,	
   output [31:0] io_out_bits_rs1,	
                 io_out_bits_rs2,	
                 io_out_bits_imm,	
@@ -909,15 +934,11 @@ module IDU(
                 io_out_bits_jump_jalr,	
                 io_out_bits_is_ecall,	
                 io_out_bits_is_mret,	
-                io_out_bits_is_csr,	
   output [31:0] io_out_bits_mtvec,	
                 io_out_bits_epc,	
-  output        io_out_bits_mem_rd_en,	
-                io_out_bits_mem_wr_en,	
-                io_out_bits_rf_wr_en,	
+  output        io_out_bits_mem_wr_en,	
   output [31:0] io_out_bits_len,	
   output        io_out_bits_load_unsign,	
-                io_out_bits_is_cmp,	
   input  [31:0] io_alu_rsl,	
                 io_dm_out,	
   input         io_wbu_valid	
@@ -939,7 +960,6 @@ module IDU(
     .io_alu_a_sel   (io_out_bits_alu_a_sel),
     .io_alu_b_sel   (io_out_bits_alu_b_sel),
     .io_mem_wr_en   (io_out_bits_mem_wr_en),
-    .io_mem_rd_en   (io_out_bits_mem_rd_en),
     .io_alu_sel     (io_out_bits_alu_sel),
     .io_jump_en     (io_out_bits_jump_en),
     .io_jump_jalr   (io_out_bits_jump_jalr),
@@ -948,8 +968,7 @@ module IDU(
     .io_load_unsign (io_out_bits_load_unsign),
     .io_is_ecall    (_Contorller_io_is_ecall),
     .io_is_csr      (_Contorller_io_is_csr),
-    .io_is_mret     (_Contorller_io_is_mret),
-    .io_is_cmp      (io_out_bits_is_cmp)
+    .io_is_mret     (_Contorller_io_is_mret)
   );
   REGISTERFILE RegisterFile (	
     .clock        (clock),
@@ -968,13 +987,12 @@ module IDU(
     .io_mtvec     (io_out_bits_mtvec),
     .io_epc       (io_out_bits_epc)
   );
+  assign io_out_valid = io_in_valid;	
   assign io_out_bits_rs1 = _RegisterFile_io_rd1;	
   assign io_out_bits_rs2 = _RegisterFile_io_rd2;	
   assign io_out_bits_pc = io_in_bits_pc;	
   assign io_out_bits_is_ecall = _Contorller_io_is_ecall;	
   assign io_out_bits_is_mret = _Contorller_io_is_mret;	
-  assign io_out_bits_is_csr = _Contorller_io_is_csr;	
-  assign io_out_bits_rf_wr_en = _Contorller_io_rf_wr_en;	
 endmodule
 
 module ALU(	
@@ -1003,6 +1021,7 @@ module ALU(
 endmodule
 
 module EXU(	
+  input         io_in_valid,	
   input  [31:0] io_in_bits_rs1,	
                 io_in_bits_rs2,	
                 io_in_bits_imm,	
@@ -1014,20 +1033,15 @@ module EXU(
                 io_in_bits_jump_jalr,	
                 io_in_bits_is_ecall,	
                 io_in_bits_is_mret,	
-                io_in_bits_is_csr,	
   input  [31:0] io_in_bits_mtvec,	
                 io_in_bits_epc,	
-  input         io_in_bits_mem_rd_en,	
-                io_in_bits_mem_wr_en,	
-                io_in_bits_rf_wr_en,	
+  input         io_in_bits_mem_wr_en,	
   input  [31:0] io_in_bits_len,	
   input         io_in_bits_load_unsign,	
-                io_in_bits_is_cmp,	
+  output        io_out_valid,	
   output [31:0] io_out_bits_alu_out,	
                 io_out_bits_data,	
   output        io_out_bits_mem_wr_en,	
-                io_out_bits_mem_rd_en,	
-                io_out_bits_rf_wr_en,	
   output [31:0] io_out_bits_len,	
   output        io_out_bits_load_unsign,	
                 io_out_bits_jump_jalr,	
@@ -1035,12 +1049,10 @@ module EXU(
   output [31:0] io_out_bits_imm,	
   output        io_out_bits_is_ecall,	
                 io_out_bits_is_mret,	
-                io_out_bits_is_csr,	
   output [31:0] io_out_bits_mtvec,	
                 io_out_bits_epc,	
                 io_out_bits_rd1,	
-  output        io_out_bits_is_cmp,	
-  output [31:0] io_alu_rsl	
+                io_alu_rsl	
 );
 
   wire [31:0] _Alu_io_rsl;	
@@ -1054,11 +1066,10 @@ module EXU(
     .io_pc        (io_in_bits_pc),
     .io_rsl       (_Alu_io_rsl)
   );
+  assign io_out_valid = io_in_valid;	
   assign io_out_bits_alu_out = _Alu_io_rsl;	
   assign io_out_bits_data = io_in_bits_rs2;	
   assign io_out_bits_mem_wr_en = io_in_bits_mem_wr_en;	
-  assign io_out_bits_mem_rd_en = io_in_bits_mem_rd_en;	
-  assign io_out_bits_rf_wr_en = io_in_bits_rf_wr_en;	
   assign io_out_bits_len = io_in_bits_len;	
   assign io_out_bits_load_unsign = io_in_bits_load_unsign;	
   assign io_out_bits_jump_jalr = io_in_bits_jump_jalr;	
@@ -1066,11 +1077,9 @@ module EXU(
   assign io_out_bits_imm = io_in_bits_imm;	
   assign io_out_bits_is_ecall = io_in_bits_is_ecall;	
   assign io_out_bits_is_mret = io_in_bits_is_mret;	
-  assign io_out_bits_is_csr = io_in_bits_is_csr;	
   assign io_out_bits_mtvec = io_in_bits_mtvec;	
   assign io_out_bits_epc = io_in_bits_epc;	
   assign io_out_bits_rd1 = io_in_bits_rs1;	
-  assign io_out_bits_is_cmp = io_in_bits_is_cmp;	
   assign io_alu_rsl = _Alu_io_rsl;	
 endmodule
 
@@ -1078,11 +1087,10 @@ endmodule
 module ISU(	
   input         clock,	
                 reset,	
+                io_in_valid,	
   input  [31:0] io_in_bits_alu_out,	
                 io_in_bits_data,	
   input         io_in_bits_mem_wr_en,	
-                io_in_bits_mem_rd_en,	
-                io_in_bits_rf_wr_en,	
   input  [31:0] io_in_bits_len,	
   input         io_in_bits_load_unsign,	
                 io_in_bits_jump_jalr,	
@@ -1090,11 +1098,10 @@ module ISU(
   input  [31:0] io_in_bits_imm,	
   input         io_in_bits_is_ecall,	
                 io_in_bits_is_mret,	
-                io_in_bits_is_csr,	
   input  [31:0] io_in_bits_mtvec,	
                 io_in_bits_epc,	
                 io_in_bits_rd1,	
-  input         io_in_bits_is_cmp,	
+  output        io_out_valid,	
   output [31:0] io_out_bits_dm_out,	
                 io_out_bits_alu_out,	
   output        io_out_bits_jump_jalr,	
@@ -1102,33 +1109,25 @@ module ISU(
   output [31:0] io_out_bits_imm,	
   output        io_out_bits_is_ecall,	
                 io_out_bits_is_mret,	
-                io_out_bits_is_csr,	
   output [31:0] io_out_bits_mtvec,	
                 io_out_bits_epc,	
-                io_out_bits_rd1,	
-  output        io_out_bits_mem_rd_en,	
-                io_out_bits_mem_wr_en,	
-                io_out_bits_rf_wr_en,	
-                io_out_bits_finish_load,	
-                io_out_bits_is_cmp	
+                io_out_bits_rd1	
 );
 
-  wire [31:0] _Dmem_dm_out;	
-  reg  [31:0] dm_reg;	
-  reg         finish_load;	
-  reg         next_pc;	
+  wire _Dmem_awready;	
+  wire _Dmem_wready;	
+  reg  awvalid;	
+  reg  wvalid;	
   always @(posedge clock) begin	
     if (reset) begin	
-      dm_reg <= 32'h0;	
-      finish_load <= 1'h0;	
-      next_pc <= 1'h1;	
+      awvalid <= 1'h0;	
+      wvalid <= 1'h0;	
     end
     else begin	
       automatic logic _GEN;	
-      _GEN = io_in_bits_mem_rd_en & ~finish_load;	
-      dm_reg <= _Dmem_dm_out;	
-      finish_load <= ~next_pc & _GEN;	
-      next_pc <= ~next_pc & (~_GEN & finish_load | next_pc);	
+      _GEN = awvalid & _Dmem_awready;	
+      awvalid <= ~_GEN & (io_in_bits_mem_wr_en | awvalid);	
+      wvalid <= ~(wvalid & _Dmem_wready) & (_GEN | wvalid);	
     end
   end 
   `ifdef ENABLE_INITIAL_REG_	
@@ -1136,17 +1135,14 @@ module ISU(
       `FIRRTL_BEFORE_INITIAL	
     `endif 
     initial begin	
-      automatic logic [31:0] _RANDOM[0:1];	
+      automatic logic [31:0] _RANDOM[0:0];	
       `ifdef INIT_RANDOM_PROLOG_	
         `INIT_RANDOM_PROLOG_	
       `endif 
       `ifdef RANDOMIZE_REG_INIT	
-        for (logic [1:0] i = 2'h0; i < 2'h2; i += 2'h1) begin
-          _RANDOM[i[0]] = `RANDOM;	
-        end	
-        dm_reg = _RANDOM[1'h0];	
-        finish_load = _RANDOM[1'h1][0];	
-        next_pc = _RANDOM[1'h1][1];	
+        _RANDOM[/*Zero width*/ 1'b0] = `RANDOM;	
+        awvalid = _RANDOM[/*Zero width*/ 1'b0][3];	
+        wvalid = _RANDOM[/*Zero width*/ 1'b0][5];	
       `endif 
     end 
     `ifdef FIRRTL_AFTER_INITIAL	
@@ -1154,35 +1150,40 @@ module ISU(
     `endif 
   `endif 
   Date_Memory Dmem (	
-    .alu_out     (io_in_bits_alu_out),
-    .data        (io_in_bits_data),
-    .wr_en       (io_in_bits_mem_wr_en),
-    .rd_en       (io_in_bits_mem_rd_en & ~finish_load & ~next_pc),	
-    .len         (io_in_bits_len),
+    .clk         (clock),
+    .arvalid     (1'h0),	
+    .araddr      (io_in_bits_alu_out),
     .load_unsign (io_in_bits_load_unsign),
-    .dm_out      (_Dmem_dm_out)
+    .arready     (/* unused */),
+    .rdata       (io_out_bits_dm_out),
+    .rresp       (/* unused */),
+    .rvalid      (/* unused */),
+    .rready      (1'h1),	
+    .awvalid     (awvalid),	
+    .awaddr      (io_in_bits_alu_out),
+    .awready     (_Dmem_awready),
+    .wvalid      (wvalid),	
+    .wdata       (io_in_bits_data),
+    .len         (io_in_bits_len),
+    .wready      (_Dmem_wready),
+    .bresp       (/* unused */),
+    .bvalid      (/* unused */),
+    .bready      (1'h1)	
   );
-  assign io_out_bits_dm_out = dm_reg;	
+  assign io_out_valid = io_in_valid;	
   assign io_out_bits_alu_out = io_in_bits_alu_out;	
   assign io_out_bits_jump_jalr = io_in_bits_jump_jalr;	
   assign io_out_bits_jump_en = io_in_bits_jump_en;	
   assign io_out_bits_imm = io_in_bits_imm;	
   assign io_out_bits_is_ecall = io_in_bits_is_ecall;	
   assign io_out_bits_is_mret = io_in_bits_is_mret;	
-  assign io_out_bits_is_csr = io_in_bits_is_csr;	
   assign io_out_bits_mtvec = io_in_bits_mtvec;	
   assign io_out_bits_epc = io_in_bits_epc;	
   assign io_out_bits_rd1 = io_in_bits_rd1;	
-  assign io_out_bits_mem_rd_en = io_in_bits_mem_rd_en;	
-  assign io_out_bits_mem_wr_en = io_in_bits_mem_wr_en;	
-  assign io_out_bits_rf_wr_en = io_in_bits_rf_wr_en;	
-  assign io_out_bits_finish_load = finish_load;	
-  assign io_out_bits_is_cmp = io_in_bits_is_cmp;	
 endmodule
 
 module WBU(	
-  input         clock,	
-                reset,	
+  input         io_in_valid,	
   input  [31:0] io_in_bits_dm_out,	
                 io_in_bits_alu_out,	
   input         io_in_bits_jump_jalr,	
@@ -1190,15 +1191,9 @@ module WBU(
   input  [31:0] io_in_bits_imm,	
   input         io_in_bits_is_ecall,	
                 io_in_bits_is_mret,	
-                io_in_bits_is_csr,	
   input  [31:0] io_in_bits_mtvec,	
                 io_in_bits_epc,	
                 io_in_bits_rd1,	
-  input         io_in_bits_mem_rd_en,	
-                io_in_bits_mem_wr_en,	
-                io_in_bits_rf_wr_en,	
-                io_in_bits_finish_load,	
-                io_in_bits_is_cmp,	
   output        io_out_bits_jump_jalr,	
                 io_out_bits_jump_en,	
   output [31:0] io_out_bits_imm,	
@@ -1212,37 +1207,6 @@ module WBU(
   output        io_wbu_valid	
 );
 
-  reg  wbu_reg;	
-  wire io_wbu_valid_0 =
-    ~wbu_reg
-    & (io_in_bits_mem_rd_en & io_in_bits_finish_load | ~io_in_bits_mem_rd_en
-       & io_in_bits_rf_wr_en | io_in_bits_mem_wr_en | io_in_bits_jump_en
-       | io_in_bits_is_cmp | io_in_bits_is_ecall | io_in_bits_is_csr
-       | io_in_bits_is_mret);	
-  always @(posedge clock) begin	
-    if (reset)	
-      wbu_reg <= 1'h0;	
-    else	
-      wbu_reg <= ~wbu_reg & io_wbu_valid_0;	
-  end 
-  `ifdef ENABLE_INITIAL_REG_	
-    `ifdef FIRRTL_BEFORE_INITIAL	
-      `FIRRTL_BEFORE_INITIAL	
-    `endif 
-    initial begin	
-      automatic logic [31:0] _RANDOM[0:0];	
-      `ifdef INIT_RANDOM_PROLOG_	
-        `INIT_RANDOM_PROLOG_	
-      `endif 
-      `ifdef RANDOMIZE_REG_INIT	
-        _RANDOM[/*Zero width*/ 1'b0] = `RANDOM;	
-        wbu_reg = _RANDOM[/*Zero width*/ 1'b0][0];	
-      `endif 
-    end 
-    `ifdef FIRRTL_AFTER_INITIAL	
-      `FIRRTL_AFTER_INITIAL	
-    `endif 
-  `endif 
   assign io_out_bits_jump_jalr = io_in_bits_jump_jalr;	
   assign io_out_bits_jump_en = io_in_bits_jump_en;	
   assign io_out_bits_imm = io_in_bits_imm;	
@@ -1253,7 +1217,7 @@ module WBU(
   assign io_out_bits_rd1 = io_in_bits_rd1;	
   assign io_dm_out = io_in_bits_dm_out;	
   assign io_alu_out = io_in_bits_alu_out;	
-  assign io_wbu_valid = io_wbu_valid_0;	
+  assign io_wbu_valid = io_in_valid;	
 endmodule
 
 module PC(	
@@ -1318,7 +1282,8 @@ module top(
                 io_alu_rsl,	
                 io_inst,	
                 io_imm,	
-  output        io_diff_test	
+  output        io_diff_test,	
+                io_wbu_valid	
 );
 
   wire [31:0] _pc_io_next_pc;	
@@ -1333,6 +1298,7 @@ module top(
   wire [31:0] _wbu_io_dm_out;	
   wire [31:0] _wbu_io_alu_out;	
   wire        _wbu_io_wbu_valid;	
+  wire        _isu_io_out_valid;	
   wire [31:0] _isu_io_out_bits_dm_out;	
   wire [31:0] _isu_io_out_bits_alu_out;	
   wire        _isu_io_out_bits_jump_jalr;	
@@ -1340,20 +1306,13 @@ module top(
   wire [31:0] _isu_io_out_bits_imm;	
   wire        _isu_io_out_bits_is_ecall;	
   wire        _isu_io_out_bits_is_mret;	
-  wire        _isu_io_out_bits_is_csr;	
   wire [31:0] _isu_io_out_bits_mtvec;	
   wire [31:0] _isu_io_out_bits_epc;	
   wire [31:0] _isu_io_out_bits_rd1;	
-  wire        _isu_io_out_bits_mem_rd_en;	
-  wire        _isu_io_out_bits_mem_wr_en;	
-  wire        _isu_io_out_bits_rf_wr_en;	
-  wire        _isu_io_out_bits_finish_load;	
-  wire        _isu_io_out_bits_is_cmp;	
+  wire        _exu_io_out_valid;	
   wire [31:0] _exu_io_out_bits_alu_out;	
   wire [31:0] _exu_io_out_bits_data;	
   wire        _exu_io_out_bits_mem_wr_en;	
-  wire        _exu_io_out_bits_mem_rd_en;	
-  wire        _exu_io_out_bits_rf_wr_en;	
   wire [31:0] _exu_io_out_bits_len;	
   wire        _exu_io_out_bits_load_unsign;	
   wire        _exu_io_out_bits_jump_jalr;	
@@ -1361,11 +1320,10 @@ module top(
   wire [31:0] _exu_io_out_bits_imm;	
   wire        _exu_io_out_bits_is_ecall;	
   wire        _exu_io_out_bits_is_mret;	
-  wire        _exu_io_out_bits_is_csr;	
   wire [31:0] _exu_io_out_bits_mtvec;	
   wire [31:0] _exu_io_out_bits_epc;	
   wire [31:0] _exu_io_out_bits_rd1;	
-  wire        _exu_io_out_bits_is_cmp;	
+  wire        _idu_io_out_valid;	
   wire [31:0] _idu_io_out_bits_rs1;	
   wire [31:0] _idu_io_out_bits_rs2;	
   wire [31:0] _idu_io_out_bits_imm;	
@@ -1377,29 +1335,29 @@ module top(
   wire        _idu_io_out_bits_jump_jalr;	
   wire        _idu_io_out_bits_is_ecall;	
   wire        _idu_io_out_bits_is_mret;	
-  wire        _idu_io_out_bits_is_csr;	
   wire [31:0] _idu_io_out_bits_mtvec;	
   wire [31:0] _idu_io_out_bits_epc;	
-  wire        _idu_io_out_bits_mem_rd_en;	
   wire        _idu_io_out_bits_mem_wr_en;	
-  wire        _idu_io_out_bits_rf_wr_en;	
   wire [31:0] _idu_io_out_bits_len;	
   wire        _idu_io_out_bits_load_unsign;	
-  wire        _idu_io_out_bits_is_cmp;	
+  wire        _ifu_io_out_valid;	
   wire [31:0] _ifu_io_out_bits_inst;	
   wire [31:0] _ifu_io_out_bits_pc;	
   IFU ifu (	
     .clock            (clock),
     .reset            (reset),
     .io_pc            (_pc_io_next_pc),	
+    .io_out_valid     (_ifu_io_out_valid),
     .io_out_bits_inst (_ifu_io_out_bits_inst),
     .io_out_bits_pc   (_ifu_io_out_bits_pc)
   );
   IDU idu (	
     .clock                   (clock),
     .reset                   (reset),
+    .io_in_valid             (_ifu_io_out_valid),	
     .io_in_bits_inst         (_ifu_io_out_bits_inst),	
     .io_in_bits_pc           (_ifu_io_out_bits_pc),	
+    .io_out_valid            (_idu_io_out_valid),
     .io_out_bits_rs1         (_idu_io_out_bits_rs1),
     .io_out_bits_rs2         (_idu_io_out_bits_rs2),
     .io_out_bits_imm         (_idu_io_out_bits_imm),
@@ -1411,20 +1369,17 @@ module top(
     .io_out_bits_jump_jalr   (_idu_io_out_bits_jump_jalr),
     .io_out_bits_is_ecall    (_idu_io_out_bits_is_ecall),
     .io_out_bits_is_mret     (_idu_io_out_bits_is_mret),
-    .io_out_bits_is_csr      (_idu_io_out_bits_is_csr),
     .io_out_bits_mtvec       (_idu_io_out_bits_mtvec),
     .io_out_bits_epc         (_idu_io_out_bits_epc),
-    .io_out_bits_mem_rd_en   (_idu_io_out_bits_mem_rd_en),
     .io_out_bits_mem_wr_en   (_idu_io_out_bits_mem_wr_en),
-    .io_out_bits_rf_wr_en    (_idu_io_out_bits_rf_wr_en),
     .io_out_bits_len         (_idu_io_out_bits_len),
     .io_out_bits_load_unsign (_idu_io_out_bits_load_unsign),
-    .io_out_bits_is_cmp      (_idu_io_out_bits_is_cmp),
     .io_alu_rsl              (_wbu_io_alu_out),	
     .io_dm_out               (_wbu_io_dm_out),	
     .io_wbu_valid            (_wbu_io_wbu_valid)	
   );
   EXU exu (	
+    .io_in_valid             (_idu_io_out_valid),	
     .io_in_bits_rs1          (_idu_io_out_bits_rs1),	
     .io_in_bits_rs2          (_idu_io_out_bits_rs2),	
     .io_in_bits_imm          (_idu_io_out_bits_imm),	
@@ -1436,20 +1391,15 @@ module top(
     .io_in_bits_jump_jalr    (_idu_io_out_bits_jump_jalr),	
     .io_in_bits_is_ecall     (_idu_io_out_bits_is_ecall),	
     .io_in_bits_is_mret      (_idu_io_out_bits_is_mret),	
-    .io_in_bits_is_csr       (_idu_io_out_bits_is_csr),	
     .io_in_bits_mtvec        (_idu_io_out_bits_mtvec),	
     .io_in_bits_epc          (_idu_io_out_bits_epc),	
-    .io_in_bits_mem_rd_en    (_idu_io_out_bits_mem_rd_en),	
     .io_in_bits_mem_wr_en    (_idu_io_out_bits_mem_wr_en),	
-    .io_in_bits_rf_wr_en     (_idu_io_out_bits_rf_wr_en),	
     .io_in_bits_len          (_idu_io_out_bits_len),	
     .io_in_bits_load_unsign  (_idu_io_out_bits_load_unsign),	
-    .io_in_bits_is_cmp       (_idu_io_out_bits_is_cmp),	
+    .io_out_valid            (_exu_io_out_valid),
     .io_out_bits_alu_out     (_exu_io_out_bits_alu_out),
     .io_out_bits_data        (_exu_io_out_bits_data),
     .io_out_bits_mem_wr_en   (_exu_io_out_bits_mem_wr_en),
-    .io_out_bits_mem_rd_en   (_exu_io_out_bits_mem_rd_en),
-    .io_out_bits_rf_wr_en    (_exu_io_out_bits_rf_wr_en),
     .io_out_bits_len         (_exu_io_out_bits_len),
     .io_out_bits_load_unsign (_exu_io_out_bits_load_unsign),
     .io_out_bits_jump_jalr   (_exu_io_out_bits_jump_jalr),
@@ -1457,80 +1407,63 @@ module top(
     .io_out_bits_imm         (_exu_io_out_bits_imm),
     .io_out_bits_is_ecall    (_exu_io_out_bits_is_ecall),
     .io_out_bits_is_mret     (_exu_io_out_bits_is_mret),
-    .io_out_bits_is_csr      (_exu_io_out_bits_is_csr),
     .io_out_bits_mtvec       (_exu_io_out_bits_mtvec),
     .io_out_bits_epc         (_exu_io_out_bits_epc),
     .io_out_bits_rd1         (_exu_io_out_bits_rd1),
-    .io_out_bits_is_cmp      (_exu_io_out_bits_is_cmp),
     .io_alu_rsl              (io_alu_rsl)
   );
   ISU isu (	
-    .clock                   (clock),
-    .reset                   (reset),
-    .io_in_bits_alu_out      (_exu_io_out_bits_alu_out),	
-    .io_in_bits_data         (_exu_io_out_bits_data),	
-    .io_in_bits_mem_wr_en    (_exu_io_out_bits_mem_wr_en),	
-    .io_in_bits_mem_rd_en    (_exu_io_out_bits_mem_rd_en),	
-    .io_in_bits_rf_wr_en     (_exu_io_out_bits_rf_wr_en),	
-    .io_in_bits_len          (_exu_io_out_bits_len),	
-    .io_in_bits_load_unsign  (_exu_io_out_bits_load_unsign),	
-    .io_in_bits_jump_jalr    (_exu_io_out_bits_jump_jalr),	
-    .io_in_bits_jump_en      (_exu_io_out_bits_jump_en),	
-    .io_in_bits_imm          (_exu_io_out_bits_imm),	
-    .io_in_bits_is_ecall     (_exu_io_out_bits_is_ecall),	
-    .io_in_bits_is_mret      (_exu_io_out_bits_is_mret),	
-    .io_in_bits_is_csr       (_exu_io_out_bits_is_csr),	
-    .io_in_bits_mtvec        (_exu_io_out_bits_mtvec),	
-    .io_in_bits_epc          (_exu_io_out_bits_epc),	
-    .io_in_bits_rd1          (_exu_io_out_bits_rd1),	
-    .io_in_bits_is_cmp       (_exu_io_out_bits_is_cmp),	
-    .io_out_bits_dm_out      (_isu_io_out_bits_dm_out),
-    .io_out_bits_alu_out     (_isu_io_out_bits_alu_out),
-    .io_out_bits_jump_jalr   (_isu_io_out_bits_jump_jalr),
-    .io_out_bits_jump_en     (_isu_io_out_bits_jump_en),
-    .io_out_bits_imm         (_isu_io_out_bits_imm),
-    .io_out_bits_is_ecall    (_isu_io_out_bits_is_ecall),
-    .io_out_bits_is_mret     (_isu_io_out_bits_is_mret),
-    .io_out_bits_is_csr      (_isu_io_out_bits_is_csr),
-    .io_out_bits_mtvec       (_isu_io_out_bits_mtvec),
-    .io_out_bits_epc         (_isu_io_out_bits_epc),
-    .io_out_bits_rd1         (_isu_io_out_bits_rd1),
-    .io_out_bits_mem_rd_en   (_isu_io_out_bits_mem_rd_en),
-    .io_out_bits_mem_wr_en   (_isu_io_out_bits_mem_wr_en),
-    .io_out_bits_rf_wr_en    (_isu_io_out_bits_rf_wr_en),
-    .io_out_bits_finish_load (_isu_io_out_bits_finish_load),
-    .io_out_bits_is_cmp      (_isu_io_out_bits_is_cmp)
-  );
-  WBU wbu (	
     .clock                  (clock),
     .reset                  (reset),
-    .io_in_bits_dm_out      (_isu_io_out_bits_dm_out),	
-    .io_in_bits_alu_out     (_isu_io_out_bits_alu_out),	
-    .io_in_bits_jump_jalr   (_isu_io_out_bits_jump_jalr),	
-    .io_in_bits_jump_en     (_isu_io_out_bits_jump_en),	
-    .io_in_bits_imm         (_isu_io_out_bits_imm),	
-    .io_in_bits_is_ecall    (_isu_io_out_bits_is_ecall),	
-    .io_in_bits_is_mret     (_isu_io_out_bits_is_mret),	
-    .io_in_bits_is_csr      (_isu_io_out_bits_is_csr),	
-    .io_in_bits_mtvec       (_isu_io_out_bits_mtvec),	
-    .io_in_bits_epc         (_isu_io_out_bits_epc),	
-    .io_in_bits_rd1         (_isu_io_out_bits_rd1),	
-    .io_in_bits_mem_rd_en   (_isu_io_out_bits_mem_rd_en),	
-    .io_in_bits_mem_wr_en   (_isu_io_out_bits_mem_wr_en),	
-    .io_in_bits_rf_wr_en    (_isu_io_out_bits_rf_wr_en),	
-    .io_in_bits_finish_load (_isu_io_out_bits_finish_load),	
-    .io_in_bits_is_cmp      (_isu_io_out_bits_is_cmp),	
-    .io_out_bits_jump_jalr  (_wbu_io_out_bits_jump_jalr),
-    .io_out_bits_jump_en    (_wbu_io_out_bits_jump_en),
-    .io_out_bits_imm        (_wbu_io_out_bits_imm),
-    .io_out_bits_is_ecall   (_wbu_io_out_bits_is_ecall),
-    .io_out_bits_is_mret    (_wbu_io_out_bits_is_mret),
-    .io_out_bits_mtvec      (_wbu_io_out_bits_mtvec),
-    .io_out_bits_epc        (_wbu_io_out_bits_epc),
-    .io_out_bits_rd1        (_wbu_io_out_bits_rd1),
-    .io_dm_out              (_wbu_io_dm_out),
-    .io_alu_out             (_wbu_io_alu_out),
-    .io_wbu_valid           (_wbu_io_wbu_valid)
+    .io_in_valid            (_exu_io_out_valid),	
+    .io_in_bits_alu_out     (_exu_io_out_bits_alu_out),	
+    .io_in_bits_data        (_exu_io_out_bits_data),	
+    .io_in_bits_mem_wr_en   (_exu_io_out_bits_mem_wr_en),	
+    .io_in_bits_len         (_exu_io_out_bits_len),	
+    .io_in_bits_load_unsign (_exu_io_out_bits_load_unsign),	
+    .io_in_bits_jump_jalr   (_exu_io_out_bits_jump_jalr),	
+    .io_in_bits_jump_en     (_exu_io_out_bits_jump_en),	
+    .io_in_bits_imm         (_exu_io_out_bits_imm),	
+    .io_in_bits_is_ecall    (_exu_io_out_bits_is_ecall),	
+    .io_in_bits_is_mret     (_exu_io_out_bits_is_mret),	
+    .io_in_bits_mtvec       (_exu_io_out_bits_mtvec),	
+    .io_in_bits_epc         (_exu_io_out_bits_epc),	
+    .io_in_bits_rd1         (_exu_io_out_bits_rd1),	
+    .io_out_valid           (_isu_io_out_valid),
+    .io_out_bits_dm_out     (_isu_io_out_bits_dm_out),
+    .io_out_bits_alu_out    (_isu_io_out_bits_alu_out),
+    .io_out_bits_jump_jalr  (_isu_io_out_bits_jump_jalr),
+    .io_out_bits_jump_en    (_isu_io_out_bits_jump_en),
+    .io_out_bits_imm        (_isu_io_out_bits_imm),
+    .io_out_bits_is_ecall   (_isu_io_out_bits_is_ecall),
+    .io_out_bits_is_mret    (_isu_io_out_bits_is_mret),
+    .io_out_bits_mtvec      (_isu_io_out_bits_mtvec),
+    .io_out_bits_epc        (_isu_io_out_bits_epc),
+    .io_out_bits_rd1        (_isu_io_out_bits_rd1)
+  );
+  WBU wbu (	
+    .io_in_valid           (_isu_io_out_valid),	
+    .io_in_bits_dm_out     (_isu_io_out_bits_dm_out),	
+    .io_in_bits_alu_out    (_isu_io_out_bits_alu_out),	
+    .io_in_bits_jump_jalr  (_isu_io_out_bits_jump_jalr),	
+    .io_in_bits_jump_en    (_isu_io_out_bits_jump_en),	
+    .io_in_bits_imm        (_isu_io_out_bits_imm),	
+    .io_in_bits_is_ecall   (_isu_io_out_bits_is_ecall),	
+    .io_in_bits_is_mret    (_isu_io_out_bits_is_mret),	
+    .io_in_bits_mtvec      (_isu_io_out_bits_mtvec),	
+    .io_in_bits_epc        (_isu_io_out_bits_epc),	
+    .io_in_bits_rd1        (_isu_io_out_bits_rd1),	
+    .io_out_bits_jump_jalr (_wbu_io_out_bits_jump_jalr),
+    .io_out_bits_jump_en   (_wbu_io_out_bits_jump_en),
+    .io_out_bits_imm       (_wbu_io_out_bits_imm),
+    .io_out_bits_is_ecall  (_wbu_io_out_bits_is_ecall),
+    .io_out_bits_is_mret   (_wbu_io_out_bits_is_mret),
+    .io_out_bits_mtvec     (_wbu_io_out_bits_mtvec),
+    .io_out_bits_epc       (_wbu_io_out_bits_epc),
+    .io_out_bits_rd1       (_wbu_io_out_bits_rd1),
+    .io_dm_out             (_wbu_io_dm_out),
+    .io_alu_out            (_wbu_io_alu_out),
+    .io_wbu_valid          (_wbu_io_wbu_valid)
   );
   PC pc (	
     .clock                (clock),
@@ -1550,6 +1483,7 @@ module top(
   assign io_pc = _idu_io_out_bits_pc;	
   assign io_inst = _ifu_io_out_bits_inst;	
   assign io_imm = _idu_io_out_bits_imm;	
+  assign io_wbu_valid = _wbu_io_wbu_valid;	
 endmodule
 
 
@@ -1557,74 +1491,158 @@ endmodule
 module Inst_Memory(
     input clk,
     input [31:0] pc,
-    output [31:0] inst
+    output [31:0] inst,
+    input arvalid,
+    output arready,
+    output reg rresp,
+    output reg rvalid,
+    input rready,
+    input [31:0] awaddr,
+    input  awvalid,
+    output awready,
+    input [31:0] wdata,
+    input [31:0] wstrb,
+    input  wvalid,
+    output  wready,
+    output bresp,
+    output bvalid,
+    input  bready
 );
 
     import "DPI-C" function int mem_read(input int pc, int len);
 
-    assign inst = mem_read(pc, 4);
+    reg [31:0] inst_delay;
+
+    assign arready = 1;
+    always @(posedge clk) begin
+
+        if(arvalid && arready) begin
+            if(rready && !rvalid) begin  
+                rresp <= 1;
+                rvalid <= 1;
+                inst_delay <= mem_read(pc, 4);
+            end
+        end
+
+        if(rvalid && rready) begin     
+            rvalid <= 0;
+            rresp <= 0;
+        end
+    end
+    
+    assign inst = inst_delay;
+
+    assign awready = 0;
+    assign bresp = 0;
+    assign bvalid = 0;
     
 endmodule
 
 
 module Date_Memory(
     input clk,
-    input [31:0] alu_out,
-    input [31:0] data,
-    input wr_en,    
-    input rd_en,
+    input arvalid,
+    input [31:0] araddr,
+    input load_unsign,
+    output arready,
+
+    output reg [31:0] rdata,
+    output reg rresp,
+    output reg rvalid,
+    input rready,
+
+    input awvalid,
+    input [31:0] awaddr,
+    output awready,
+
+    input wvalid,
+    input [31:0] wdata,
     input [31:0] len,
-    input load_unsign,    
-    output reg [31:0] dm_out
+    output wready,
+
+    output reg bresp,
+    output reg bvalid,
+    input bready
 );
 
     import "DPI-C" function int mem_read(input int addr, int len);
-
     import "DPI-C" function void mem_write(input int addr, int len, input int data);
 
-    always @(*) begin
+    reg [31:0] data_delay;  
+    assign rdata = data_delay;
+
+    assign arready = 1;     
+    assign awready = 1;
+    assign wready = 1;
+
+    always @(posedge clk) begin
         reg [31:0] temp_data;
-        if (rd_en) begin
-            if(load_unsign) begin
-                if(len == 1) begin
-                    dm_out = {24'b0, mem_read(alu_out, 1)};
+
+        if (arvalid && arready) begin
+            if (rready && !rvalid) begin    
+            $display("araddr = 0x%h\t", araddr);
+                rresp <= 1;
+                rvalid <= 1;
+                if(load_unsign) begin
+                    if(len == 1) begin
+                        data_delay <= {24'b0, mem_read(araddr, 1)};
+                    end
+                    else if(len == 2) begin
+                        data_delay <= {16'b0, mem_read(araddr, 2)};
+                    end
+                    else if(len == 4) begin
+                        data_delay <= mem_read(araddr, 4);
+                    end
                 end
-                else if(len == 2) begin
-                    dm_out = {16'b0, mem_read(alu_out, 2)};
-                end
-                else if(len == 4) begin
-                    dm_out = mem_read(alu_out, 4);
+                else begin
+                    temp_data = mem_read(araddr, len);
+                    if(len == 1) begin
+                        data_delay <= {{24{temp_data[7]}}, temp_data[7:0]};
+                    end
+                    else if(len == 2) begin
+                        data_delay <= {{16{temp_data[15]}}, temp_data[15:0]};
+                    end
+                    else if(len == 4) begin
+                        data_delay <= mem_read(araddr, 4);
+                    end
                 end
             end
-            else begin
-                temp_data = mem_read(alu_out, len);
-                if(len == 1) begin
-                    dm_out = {{24{temp_data[7]}}, temp_data[7:0]};
-                end
-                else if(len == 2) begin
-                    dm_out = {{16{temp_data[15]}}, temp_data[15:0]};
-                end
-                else if(len == 4) begin
-                    dm_out = mem_read(alu_out, 4);
-                end
-            
-            end
         end
-        else begin
-            dm_out = alu_out;
-        end
+        
       
-        if (wr_en) begin
-            if(len == 1) begin
-                mem_write(alu_out, 1, data);
-            end
-            else if(len == 2) begin
-                mem_write(alu_out, 2, data);
-            end
-            else if(len == 4) begin
-                mem_write(alu_out, 4, data);
+        if(awvalid && awready) begin
+            if (wvalid && wready) begin     
+                if(len == 1) begin
+                    mem_write(awaddr, 1, wdata);
+                end
+                else if(len == 2) begin
+                    mem_write(awaddr, 2, wdata);
+                end
+                else if(len == 4) begin
+                    mem_write(awaddr, 4, wdata);
+                end
+                bvalid <= 1;
             end
         end
+
+        if(rvalid && rready) begin  
+            rvalid <= 0;
+            rresp <= 0;
+        end
+
+        if(bvalid && bready) begin  
+            bresp <= 1;
+            bvalid <= 0;
+        end
+
+        if(bresp) begin
+            bresp <= 0;
+        end
+        $display("arvalid = %d\t", arvalid);
+        $display("arready = %d\t", arready);
+        $display("rvalid = %d\t", rvalid);
+        $display("rready = %d\t", rready);
+        $display("rresp = %d\t", rresp);
     end
 
 
