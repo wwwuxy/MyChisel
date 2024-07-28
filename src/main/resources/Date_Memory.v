@@ -12,12 +12,12 @@ module Date_Memory(
 
     input awvalid,
     input [31:0] awaddr,
-    output awready,
+    output reg awready,
 
     input wvalid,
     input [31:0] wdata,
     input [31:0] len,
-    output wready,
+    output reg wready,
 
     output reg bresp,
     output reg bvalid,
@@ -31,8 +31,6 @@ module Date_Memory(
     assign rdata = data_delay;
 
     assign arready = 1;     //ready都是1
-    assign awready = 1;
-    assign wready = 1;
 
     always @(posedge clk) begin
         reg [31:0] temp_data;
@@ -68,21 +66,20 @@ module Date_Memory(
             end
         end
         
-      
-        if(awvalid && awready) begin
-            if (wvalid && wready) begin     //写握手成功
-                if(len == 1) begin
-                    mem_write(awaddr, 1, wdata);
-                end
-                else if(len == 2) begin
-                    mem_write(awaddr, 2, wdata);
-                end
-                else if(len == 4) begin
-                    mem_write(awaddr, 4, wdata);
-                end
+//写        
+        if (awvalid && !awready) begin
+            awready <= 1;
+        end     
+        
+        if (awvalid && awready) begin
+            awready <= 0;
+        end
+
+        if (wvalid && !wready) begin  //写握手
+                wready <= 1;
+                mem_write(awaddr, len, wdata);
                 bvalid <= 1;
             end
-        end
 
         if(rvalid && rready) begin  //读取成功,清除信号
             rvalid <= 0;
@@ -90,6 +87,7 @@ module Date_Memory(
         end
 
         if(bvalid && bready) begin  //写入成功,清除信号
+            wready <= 0;
             bresp <= 1;
             bvalid <= 0;
         end
@@ -97,11 +95,11 @@ module Date_Memory(
         if(bresp) begin
             bresp <= 0;
         end
-        $display("arvalid = %d\t", arvalid);
-        $display("arready = %d\t", arready);
-        $display("rvalid = %d\t", rvalid);
-        $display("rready = %d\t", rready);
-        $display("rresp = %d\t", rresp);
+        // $display("arvalid = %d\t", arvalid);
+        // $display("arready = %d\t", arready);
+        // $display("rvalid = %d\t", rvalid);
+        // $display("rready = %d\t", rready);
+        // $display("rresp = %d\t", rresp);
     end
 
 

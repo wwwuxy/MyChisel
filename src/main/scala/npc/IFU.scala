@@ -3,6 +3,8 @@ package npc
 import chisel3._
 import chisel3.util.HasBlackBoxResource
 import chisel3.util.Decoupled
+import chisel3.util._
+
 
 //BlackBox for Inst_Memory
 class Inst_Memory extends BlackBox with HasBlackBoxResource {
@@ -36,6 +38,7 @@ class IFU extends  Module{
     val io = IO(new Bundle {
         val pc = Input(UInt(32.W))
         val out = Decoupled(new IFU_IDU)
+        val diff_test = Output(Bool())
     })
 
     val arvalid = RegInit(false.B)
@@ -46,6 +49,7 @@ class IFU extends  Module{
     val awvalid = RegInit(false.B)
     val bready = RegInit(false.B)
     val wvalid = RegInit(false.B)
+    io.diff_test := false.B
     // val can_wirte = RegInit(false.B)
 
     val imem = Module(new Inst_Memory)
@@ -71,28 +75,43 @@ class IFU extends  Module{
 
     val IPC = RegInit(0.U(32.W))
     val IR = RegInit(0.U(32.W))
-    // val vaild_reg = RegInit(false.B)
-
-
     rready := true.B
-    when(io.pc =/= IPC && !rresp){     //有新的pc进来了,将读地址有效拉高,直到握手成功
+
+  val sIdle :: sFetch :: sValid :: sGetinst :: Nil = Enum(4)
+  val state = RegInit(sIdle)
+
+  switch(state) {
+    is(sIdle) {
+      when(io.pc =/= IPC) {
         arvalid := true.B
+        io.diff_test := true.B
+        state := sFetch
+      }
     }
-
-    when(arvalid && arready){     //读地址握手成功，准备读数据,将读地址有效拉低
+    is(sFetch) {
+      when(arvalid && arready) {
         arvalid := false.B
+        state := sGetinst
+      }
     }
-
-    when(rready && rvalid){
-        when(rresp){        //数据有效，读取成功
-            IR := imem.io.inst
-            IPC := io.pc
-            // can_wirte := true.B
+    is(sGetinst) {
+      when(rready && rvalid) {
+        when(rresp) {
+          IR := imem.io.inst
+          IPC := io.pc
+          state := sValid
+        }
+      }
+    }
+    is(sValid){
+        when(io.out.ready){
+            state := sIdle
         }
     }
+  }
 
-//out
-    io.out.bits.pc := IPC
-    io.out.bits.inst := IR
-    io.out.valid := rresp
+  // out
+  io.out.valid := (state === sValid)
+  io.out.bits.pc := IPC
+  io.out.bits.inst := IR
 }

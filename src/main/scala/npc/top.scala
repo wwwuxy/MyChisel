@@ -35,7 +35,7 @@ class top extends Module{
     idu.io.alu_rsl := wbu.io.alu_out
     idu.io.dm_out := wbu.io.dm_out 
     idu.io.wbu_valid := wbu.io.wbu_valid
-    pc.io.wbu_valid := wbu.io.wbu_valid
+    // pc.io.wbu_valid := wbu.io.wbu_valid
     isu.io.wbu_valid := wbu.io.wbu_valid
 
     
@@ -44,11 +44,11 @@ class top extends Module{
 
 
 //for sdb    
-    io.pc := exu.io.in.bits.pc
+    io.pc := pc.io.next_pc
     io.alu_rsl := exu.io.alu_rsl
     io.inst := ifu.io.out.bits.inst
     io.imm := idu.io.out.bits.imm
-    io.diff_test := pc.io.diff_test
+    io.diff_test := ifu.io.diff_test
     io.wbu_valid := wbu.io.wbu_valid
 }
 

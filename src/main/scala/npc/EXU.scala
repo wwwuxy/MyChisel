@@ -43,11 +43,25 @@ class EXU extends Module{
 //for isu
         io.out.bits.is_load := io.in.bits.is_load
         io.out.bits.isS_type := io.in.bits.isS_type
+        io.out.bits.is_j := io.in.bits.is_j
+        io.out.bits.pc := io.in.bits.pc
 //for wbu
         io.out.bits.is_cmp := io.in.bits.is_cmp
+        
 
-                
-        io.out.valid := io.in.valid
-        io.in.ready := io.out.ready
-  
+  // State Machine
+        val sIdle :: sValid :: Nil = Enum(2)
+        val state = RegInit(sIdle)    
+        switch(state) {
+          is(sIdle) {
+            when(io.in.valid) {
+              state := sValid
+            }
+          }
+          is(sValid) {
+              state := sIdle
+            }
+          }   
+        io.in.ready := (state === sIdle)
+        io.out.valid := (state === sValid)
 }

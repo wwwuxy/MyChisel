@@ -15,8 +15,15 @@ class WBU extends Module{
 //for regfiles
     io.dm_out := io.in.bits.dm_out
     io.alu_out := io.in.bits.alu_out
-
-    io.wbu_valid := (io.in.bits.is_load && io.in.bits.finish_load) || (io.in.bits.isS_type && io.in.bits.can_wirte) || (!io.in.bits.is_load && !io.in.bits.isS_type && io.in.valid)
+    val isu_finish = Wire(Bool())
+    
+    when(io.in.bits.is_load){
+        isu_finish := io.in.bits.load_finish
+    }.elsewhen(io.in.bits.isS_type){
+        isu_finish := io.in.bits.store_finish
+    }.otherwise{
+        isu_finish := true.B
+    }   
 
 //for pc
     io.out.bits.imm := io.in.bits.imm
@@ -28,6 +35,26 @@ class WBU extends Module{
     io.out.bits.epc := io.in.bits.epc
     io.out.bits.rd1 := io.in.bits.rd1
 
-    io.in.ready := io.out.ready
-    io.out.valid := io.in.valid
-}   
+  // State Machine
+    val sIdle :: sWait :: sValid :: Nil = Enum(3)
+    val state = RegInit(sIdle)    
+    switch(state) {
+      is(sIdle) {
+        when(io.in.valid) {
+          state := sWait
+        }
+      }
+      is(sWait){
+        when(isu_finish){
+            state := sValid
+        }
+      }
+      is(sValid) {
+          state := sIdle
+        }
+      }
+
+    io.in.ready := (state === sIdle)
+    io.out.valid := (state === sValid)
+    io.wbu_valid := (state === sValid)
+}

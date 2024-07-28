@@ -26,6 +26,7 @@ class IDU_EXU extends Bundle{
 //for isu
     val is_load = Output(Bool())
     val isS_type = Output(Bool())
+    val is_j = Output(Bool())
 //for wbu
     val is_cmp = Output(Bool())
 } 

@@ -1,3 +1,21 @@
+file://<WORKSPACE>/src/main/scala/npc/IDU.scala
+### java.lang.IndexOutOfBoundsException: 0
+
+occurred in the presentation compiler.
+
+presentation compiler configuration:
+Scala version: 3.3.3
+Classpath:
+<HOME>/.cache/coursier/v1/https/maven.aliyun.com/repository/central/org/scala-lang/scala3-library_3/3.3.3/scala3-library_3-3.3.3.jar [exists ], <HOME>/.cache/coursier/v1/https/maven.aliyun.com/repository/central/org/scala-lang/scala-library/2.13.12/scala-library-2.13.12.jar [exists ]
+Options:
+
+
+
+action parameters:
+offset: 2685
+uri: file://<WORKSPACE>/src/main/scala/npc/IDU.scala
+text:
+```scala
 package npc
 
 import chisel3._
@@ -7,7 +25,6 @@ import chisel3.util.Fill
 import chisel3.util.Cat
 import java.lang.ModuleLayer.Controller
 import javax.sound.sampled.Control
-import chisel3.util._
 
 
 class IDU extends Module{
@@ -68,23 +85,37 @@ class IDU extends Module{
         io.out.bits.is_j := Contorller.io.is_j
 //for wbu
         io.out.bits.is_cmp := Contorller.io.is_cmp
-  // State Machine
-  val sIdle :: sValid :: Nil = Enum(2)
-  val state = RegInit(sIdle)
 
-  switch(state) {
-    is(sIdle) {
-      when(io.in.valid) {
-        state := sValid
-      }
-    }
-    is(sValid) {
-        state := sIdle
-      }
+    when(io.in.valid){
+        io.in.ready := true.B
     }
 
-  io.in.ready := (state === sIdle)
-  io.out.valid := (state === sValid)
+    when(io.in.valid && io.in.ready){
+        io.out.valid := true.B
+        io,.@@
+    }
 }
 
 
+
+```
+
+
+
+#### Error stacktrace:
+
+```
+scala.collection.LinearSeqOps.apply(LinearSeq.scala:131)
+	scala.collection.LinearSeqOps.apply$(LinearSeq.scala:128)
+	scala.collection.immutable.List.apply(List.scala:79)
+	dotty.tools.dotc.util.Signatures$.countParams(Signatures.scala:501)
+	dotty.tools.dotc.util.Signatures$.applyCallInfo(Signatures.scala:186)
+	dotty.tools.dotc.util.Signatures$.computeSignatureHelp(Signatures.scala:94)
+	dotty.tools.dotc.util.Signatures$.signatureHelp(Signatures.scala:63)
+	scala.meta.internal.pc.MetalsSignatures$.signatures(MetalsSignatures.scala:17)
+	scala.meta.internal.pc.SignatureHelpProvider$.signatureHelp(SignatureHelpProvider.scala:51)
+	scala.meta.internal.pc.ScalaPresentationCompiler.signatureHelp$$anonfun$1(ScalaPresentationCompiler.scala:435)
+```
+#### Short summary: 
+
+java.lang.IndexOutOfBoundsException: 0

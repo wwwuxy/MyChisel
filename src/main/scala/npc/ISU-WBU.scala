@@ -18,10 +18,12 @@ class ISU_WBU extends Bundle{
     val mem_rd_en = Bool()
     val mem_wr_en = Bool()
     val rf_wr_en = Bool()
-    val finish_load = Bool()
-//for wbu
+    val load_finish = Bool()
+    val store_finish = Bool()
+
+    val pc = UInt(32.W)
     val is_cmp = Output(Bool())
     val is_load = Bool()
     val isS_type = Bool()
-    val can_wirte = Bool()
+    val is_j = Output(Bool())
 }

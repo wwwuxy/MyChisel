@@ -44,35 +44,35 @@ class ISU extends Module{
 
     val Dmem = Module(new Date_Memory())
     Dmem.io.clk := clock
-
-    val finish_load = RegInit(false.B)
     
     val arvalid = RegInit(false.B) 
-    val can_read = RegInit(false.B)
+    val load_finish = RegInit(false.B)
     val rready = true.B
     val awvalid = RegInit(false.B)
-    val can_wirte = RegInit(false.B)
+    val store_finish = RegInit(false.B)
     val wvalid = RegInit(false.B)
     val bready = true.B
 
     when(io.in.bits.is_load){
-        arvalid := true.B
+        when(io.in.valid){
+            arvalid := true.B
+        }
     }
     
     when(arvalid && Dmem.io.arready){
-        can_read := true.B
         arvalid := false.B
     }
 
-    when(can_read && Dmem.io.rvalid && rready){
-        finish_load := true.B
-        can_read := false.B
-    }.elsewhen(finish_load){
-        finish_load := false.B
+    when(Dmem.io.rvalid && rready){
+        load_finish := true.B
+    }.elsewhen(load_finish){
+        load_finish := false.B
     }
 
     when(io.in.bits.mem_wr_en){
-        awvalid := true.B
+        when(io.in.valid){
+            awvalid := true.B
+        }
     }
 
     when(awvalid && Dmem.io.awready){   //写地址握手成功
@@ -81,12 +81,13 @@ class ISU extends Module{
     }
 
     when(wvalid && Dmem.io.wready){     //写数据握手成功
-        can_wirte := true.B
         wvalid := false.B
     }
 
-    when(Dmem.io.bresp){        //写数据成功
-        can_wirte := false.B
+    when(Dmem.io.bresp){
+        store_finish := true.B
+    }.elsewhen(store_finish){
+        store_finish := false.B
     }
 
 //Dmem
@@ -116,15 +117,31 @@ class ISU extends Module{
     io.out.bits.mem_rd_en := io.in.bits.mem_rd_en
     io.out.bits.mem_wr_en := io.in.bits.mem_wr_en
     io.out.bits.rf_wr_en := io.in.bits.rf_wr_en
-    io.out.bits.finish_load := finish_load
+    io.out.bits.load_finish := load_finish
+    io.out.bits.store_finish := store_finish
     io.out.bits.is_csr := io.in.bits.is_csr
     
 //for wbu
     io.out.bits.is_cmp := io.in.bits.is_cmp
     io.out.bits.is_load := io.in.bits.is_load
     io.out.bits.isS_type := io.in.bits.isS_type
-    io.out.bits.can_wirte := can_wirte
 
-    io.out.valid := io.in.valid
-    io.in.ready := io.out.ready
+    io.out.bits.is_j := io.in.bits.is_j
+    io.out.bits.pc := io.in.bits.pc
+
+  // State Machine
+        val sIdle :: sValid :: Nil = Enum(2)
+        val state = RegInit(sIdle)    
+        switch(state) {
+          is(sIdle) {
+            when(io.in.valid) {
+              state := sValid
+            }
+          }
+          is(sValid) {
+              state := sIdle
+            }
+          }   
+        io.in.ready := (state === sIdle)
+        io.out.valid := (state === sValid)
 }

@@ -27,6 +27,7 @@ class CONTORLLER extends Module{
         val is_cmp = Output(Bool())
         val is_load = Output(Bool())
         val isS_type = Output(Bool()) 
+        val is_j = Output(Bool())
         // val nemutrap = Output(Bool())
     })
 
@@ -37,8 +38,7 @@ class CONTORLLER extends Module{
     val op2_unsigned = io.rs2
 
 //inital enable signal
-    io.isS_type := false.B
-    io.is_load := false.B
+    io.is_j := false.B
     io.is_cmp := false.B
     io.is_mret := false.B
     io.is_csr := false.B
@@ -65,6 +65,9 @@ class CONTORLLER extends Module{
     val isS_type = (opcode === "b0100011".U)
     val isB_type = (opcode === "b1100011".U)
     val is_load =  (opcode === "b0000011".U)
+
+    io.isS_type := isS_type
+    io.is_load := is_load
 
 //提取fun3字段，确定指令
     val fun3 = Wire(UInt(3.W))
@@ -136,6 +139,7 @@ class CONTORLLER extends Module{
         io.alu_sel := "b000_00000_00001".U
         io.rf_wr_en := true.B
         io.rf_wr_sel := "b100".U
+        io.is_j := true.B
     }
 //jalr
     when(is_jalr){
@@ -145,6 +149,7 @@ class CONTORLLER extends Module{
         io.alu_b_sel := false.B
         io.rf_wr_en := true.B
         io.rf_wr_sel := "b100".U
+        io.is_j := true.B
     }
 //beq
     when(isB_type && (fun3 === "b000".U)){

@@ -22,9 +22,11 @@ class EXU_ISU extends  Bundle{
     val mtvec = UInt(32.W)
     val epc = UInt(32.W)
     val rd1 = UInt(32.W)     //for jalr
+    val pc = UInt(32.W)
 //for isu
     val is_load = Output(Bool())
     val isS_type = Output(Bool())
+    val is_j = Output(Bool())
 //for wbu
     val is_cmp = Output(Bool())
 }
