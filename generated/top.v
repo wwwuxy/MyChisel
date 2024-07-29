@@ -1680,7 +1680,7 @@ module top(
     .io_in_bits_epc       (_wbu_io_out_bits_epc),	
     .io_in_bits_rd1       (_wbu_io_out_bits_rd1)	
   );
-  assign io_pc = _pc_io_next_pc;	
+  assign io_pc = _idu_io_out_bits_pc;	
   assign io_inst = _ifu_io_out_bits_inst;	
   assign io_imm = _idu_io_out_bits_imm;	
   assign io_wbu_valid = _wbu_io_wbu_valid;	
@@ -1778,7 +1778,6 @@ module Date_Memory(
 
         if (arvalid && arready) begin
             if (rready && !rvalid) begin    
-            $display("araddr = 0x%h\t", araddr);
                 rresp <= 1;
                 rvalid <= 1;
                 if(load_unsign) begin

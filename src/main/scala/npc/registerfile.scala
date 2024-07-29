@@ -55,6 +55,7 @@ class REGISTERFILE extends Module{
     io.epc := 0.U
     FileReg(0) := 0.U
 
+
     when(io.is_ecall){
             val MIE = CsrReg(0)(3)
             CsrReg(0) := CsrReg(0) & "hfffffffb".U

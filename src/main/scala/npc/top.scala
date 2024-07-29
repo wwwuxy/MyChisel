@@ -44,7 +44,7 @@ class top extends Module{
 
 
 //for sdb    
-    io.pc := pc.io.next_pc
+    io.pc := idu.io.out.bits.pc
     io.alu_rsl := exu.io.alu_rsl
     io.inst := ifu.io.out.bits.inst
     io.imm := idu.io.out.bits.imm

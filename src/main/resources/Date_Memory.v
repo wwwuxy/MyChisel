@@ -37,7 +37,7 @@ module Date_Memory(
 
         if (arvalid && arready) begin
             if (rready && !rvalid) begin    //读握手成功
-            $display("araddr = 0x%h\t", araddr);
+            // $display("araddr = 0x%h\t", araddr);
                 rresp <= 1;
                 rvalid <= 1;
                 if(load_unsign) begin

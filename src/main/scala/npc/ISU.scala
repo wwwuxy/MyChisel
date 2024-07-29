@@ -43,6 +43,7 @@ class ISU extends Module{
     })
 
     val Dmem = Module(new Date_Memory())
+
     Dmem.io.clk := clock
     
     val arvalid = RegInit(false.B) 
