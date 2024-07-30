@@ -40,7 +40,6 @@
   `endif 
 `endif 
 
-
 module IFU(	
   input         clock,	
                 reset,	
@@ -49,50 +48,64 @@ module IFU(
   output        io_out_valid,	
   output [31:0] io_out_bits_inst,	
                 io_out_bits_pc,	
-  output        io_diff_test	
+  input         io_ifu_axi_out_ready,	
+  output        io_ifu_axi_out_valid,	
+                io_ifu_axi_out_bits_arvalid,	
+  output [31:0] io_ifu_axi_out_bits_araddr,	
+  output        io_ifu_axi_in_ready,	
+  input         io_ifu_axi_in_bits_arready,	
+                io_ifu_axi_in_bits_rvalid,	
+  input  [31:0] io_ifu_axi_in_bits_rdata,	
+  input         io_ifu_axi_in_bits_rresp,	
+  output        io_ifu_valid,	
+                io_diff_test	
 );
 
-  wire [31:0] _imem_inst;	
-  wire        _imem_arready;	
-  wire        _imem_rresp;	
-  wire        _imem_rvalid;	
   reg         arvalid;	
+  reg         valid;	
   reg  [31:0] IPC;	
   reg  [31:0] IR;	
   reg  [1:0]  state;	
   wire        _GEN = state == 2'h0;	
+  wire        _GEN_0 = io_pc == IPC;	
   always @(posedge clock) begin	
     if (reset) begin	
       arvalid <= 1'h0;	
+      valid <= 1'h0;	
       IPC <= 32'h0;	
       IR <= 32'h0;	
       state <= 2'h0;	
     end
     else begin	
-      automatic logic            _GEN_0;	
       automatic logic            _GEN_1;	
       automatic logic            _GEN_2;	
-      automatic logic            _GEN_3 = _imem_rvalid & _imem_rresp;	
-      automatic logic [3:0][1:0] _GEN_4;	
-      _GEN_0 = io_pc == IPC;	
+      automatic logic            _GEN_3 =
+        io_ifu_axi_in_bits_rvalid & io_ifu_axi_in_bits_rresp;	
+      automatic logic            _GEN_4;	
+      automatic logic [3:0][1:0] _GEN_5;	
       _GEN_1 = state == 2'h1;	
-      _GEN_2 = arvalid & _imem_arready;	
-      if (_GEN)	
-        arvalid <= ~_GEN_0 | arvalid;	
-      else	
+      _GEN_2 = arvalid & io_ifu_axi_in_bits_arready;	
+      _GEN_4 = state == 2'h2 & _GEN_3;	
+      if (_GEN) begin	
+        arvalid <= ~_GEN_0 & io_ifu_axi_out_ready | arvalid;	
+        valid <= ~_GEN_0 | valid;	
+      end
+      else begin	
         arvalid <= ~(_GEN_1 & _GEN_2) & arvalid;	
-      if (_GEN | _GEN_1 | ~((&state) & _GEN_3)) begin	
+        valid <= (_GEN_1 | ~_GEN_4) & valid;	
+      end
+      if (_GEN | _GEN_1 | ~_GEN_4) begin	
       end
       else begin	
         IPC <= io_pc;	
-        IR <= _imem_inst;	
+        IR <= io_ifu_axi_in_bits_rdata;	
       end
-      _GEN_4 =
-        {{_GEN_3 ? 2'h2 : state},
-         {state == 2'h2 & io_out_ready ? 2'h0 : state},
-         {_GEN_2 ? 2'h3 : state},
-         {_GEN_0 ? state : 2'h1}};	
-      state <= _GEN_4[state];	
+      _GEN_5 =
+        {{(&state) & io_out_ready ? 2'h0 : state},
+         {_GEN_3 ? 2'h3 : state},
+         {_GEN_2 ? 2'h2 : state},
+         {_GEN_0 | ~io_ifu_axi_out_ready ? state : 2'h1}};	
+      state <= _GEN_5[state];	
     end
   end 
   `ifdef ENABLE_INITIAL_REG_	
@@ -100,48 +113,34 @@ module IFU(
       `FIRRTL_BEFORE_INITIAL	
     `endif 
     initial begin	
-      automatic logic [31:0] _RANDOM[0:5];	
+      automatic logic [31:0] _RANDOM[0:2];	
       `ifdef INIT_RANDOM_PROLOG_	
         `INIT_RANDOM_PROLOG_	
       `endif 
       `ifdef RANDOMIZE_REG_INIT	
-        for (logic [2:0] i = 3'h0; i < 3'h6; i += 3'h1) begin
+        for (logic [1:0] i = 2'h0; i < 2'h3; i += 2'h1) begin
           _RANDOM[i] = `RANDOM;	
         end	
-        arvalid = _RANDOM[3'h0][0];	
-        IPC = {_RANDOM[3'h3][31:5], _RANDOM[3'h4][4:0]};	
-        IR = {_RANDOM[3'h4][31:5], _RANDOM[3'h5][4:0]};	
-        state = _RANDOM[3'h5][6:5];	
+        arvalid = _RANDOM[2'h0][0];	
+        valid = _RANDOM[2'h0][1];	
+        IPC = {_RANDOM[2'h0][31:2], _RANDOM[2'h1][1:0]};	
+        IR = {_RANDOM[2'h1][31:2], _RANDOM[2'h2][1:0]};	
+        state = _RANDOM[2'h2][3:2];	
       `endif 
     end 
     `ifdef FIRRTL_AFTER_INITIAL	
       `FIRRTL_AFTER_INITIAL	
     `endif 
   `endif 
-  Inst_Memory imem (	
-    .clk     (clock),
-    .pc      (io_pc),
-    .inst    (_imem_inst),
-    .arvalid (arvalid),	
-    .arready (_imem_arready),
-    .rresp   (_imem_rresp),
-    .rvalid  (_imem_rvalid),
-    .rready  (1'h1),	
-    .awaddr  (32'h0),	
-    .awvalid (1'h0),	
-    .awready (/* unused */),
-    .wdata   (32'h0),	
-    .wstrb   (32'h0),	
-    .wvalid  (1'h0),	
-    .wready  (/* unused */),
-    .bresp   (/* unused */),
-    .bvalid  (/* unused */),
-    .bready  (1'h0)	
-  );
-  assign io_out_valid = state == 2'h2;	
+  assign io_out_valid = &state;	
   assign io_out_bits_inst = IR;	
   assign io_out_bits_pc = IPC;	
-  assign io_diff_test = _GEN & io_pc != IPC;	
+  assign io_ifu_axi_out_valid = ~(&state);	
+  assign io_ifu_axi_out_bits_arvalid = arvalid;	
+  assign io_ifu_axi_out_bits_araddr = io_pc;	
+  assign io_ifu_axi_in_ready = ~(&state);	
+  assign io_ifu_valid = valid;	
+  assign io_diff_test = _GEN & ~_GEN_0 & io_ifu_axi_out_ready;	
 endmodule
 
 module CONTORLLER(	
@@ -1177,7 +1176,6 @@ module EXU(
   assign io_alu_rsl = _Alu_io_rsl;	
 endmodule
 
-
 module ISU(	
   input         clock,	
                 reset,	
@@ -1211,39 +1209,106 @@ module ISU(
   output        io_out_bits_load_finish,	
                 io_out_bits_store_finish,	
                 io_out_bits_is_load,	
-                io_out_bits_isS_type	
+                io_out_bits_isS_type,	
+  input         io_isu_axi_out_ready,	
+  output        io_isu_axi_out_valid,	
+                io_isu_axi_out_bits_arvalid,	
+                io_isu_axi_out_bits_load_unsign,	
+  output [31:0] io_isu_axi_out_bits_araddr,	
+  output        io_isu_axi_out_bits_awvalid,	
+  output [31:0] io_isu_axi_out_bits_awaddr,	
+  output        io_isu_axi_out_bits_wvalid,	
+  output [31:0] io_isu_axi_out_bits_wdata,	
+                io_isu_axi_out_bits_wstrb,	
+  output        io_isu_axi_in_ready,	
+  input         io_isu_axi_in_bits_arready,	
+  input  [31:0] io_isu_axi_in_bits_rdata,	
+  input         io_isu_axi_in_bits_rresp,	
+                io_isu_axi_in_bits_awready,	
+                io_isu_axi_in_bits_wready,	
+                io_isu_axi_in_bits_bresp,	
+  output        io_isu_valid	
 );
 
-  wire _Dmem_arready;	
-  wire _Dmem_rvalid;	
-  wire _Dmem_awready;	
-  wire _Dmem_wready;	
-  wire _Dmem_bresp;	
-  reg  arvalid;	
-  reg  load_finish;	
-  reg  awvalid;	
-  reg  store_finish;	
-  reg  wvalid;	
-  reg  state;	
+  reg       store_finish;	
+  reg       load_finish;	
+  reg       arvalid;	
+  reg       awvalid;	
+  reg       wvalid;	
+  reg       valid;	
+  reg [2:0] state;	
   always @(posedge clock) begin	
     if (reset) begin	
-      arvalid <= 1'h0;	
-      load_finish <= 1'h0;	
-      awvalid <= 1'h0;	
       store_finish <= 1'h0;	
+      load_finish <= 1'h0;	
+      arvalid <= 1'h0;	
+      awvalid <= 1'h0;	
       wvalid <= 1'h0;	
-      state <= 1'h0;	
+      valid <= 1'h0;	
+      state <= 3'h0;	
     end
     else begin	
-      automatic logic _GEN;	
-      _GEN = awvalid & _Dmem_awready;	
-      arvalid <=
-        ~(arvalid & _Dmem_arready) & (io_in_bits_is_load & io_in_valid | arvalid);	
-      load_finish <= _Dmem_rvalid;	
-      awvalid <= ~_GEN & (io_in_bits_mem_wr_en & io_in_valid | awvalid);	
-      store_finish <= _Dmem_bresp;	
-      wvalid <= ~(wvalid & _Dmem_wready) & (_GEN | wvalid);	
-      state <= ~state & (io_in_valid | state);	
+      automatic logic            _GEN;	
+      automatic logic            _GEN_0;	
+      automatic logic            _GEN_1;	
+      automatic logic            _GEN_2;	
+      automatic logic            _GEN_3;	
+      automatic logic            _GEN_4;	
+      automatic logic            _GEN_5;	
+      automatic logic            _GEN_6;	
+      automatic logic            _GEN_7;	
+      automatic logic            _GEN_8;	
+      automatic logic            _GEN_9;	
+      automatic logic            _GEN_10;	
+      automatic logic [7:0][2:0] _GEN_11;	
+      _GEN = state == 3'h0;	
+      _GEN_0 = io_in_bits_is_load | io_in_bits_isS_type;	
+      _GEN_1 = state == 3'h1;	
+      _GEN_2 = state == 3'h2;	
+      _GEN_3 = arvalid & io_isu_axi_in_bits_arready;	
+      _GEN_4 = state == 3'h3;	
+      _GEN_5 = awvalid & io_isu_axi_in_bits_awready;	
+      _GEN_6 = state == 3'h4;	
+      _GEN_7 = wvalid & io_isu_axi_in_bits_wready;	
+      _GEN_8 = state == 3'h5;	
+      _GEN_9 = _GEN_1 | _GEN_2 | _GEN_4 | _GEN_6;	
+      _GEN_10 = _GEN | _GEN_9;	
+      store_finish <=
+        ~_GEN_10 & _GEN_8 & ~io_isu_axi_in_bits_rresp & io_isu_axi_in_bits_bresp
+        | store_finish;	
+      load_finish <= ~_GEN_10 & _GEN_8 & io_isu_axi_in_bits_rresp | load_finish;	
+      if (_GEN)	
+        valid <= io_in_valid & _GEN_0 | valid;	
+      else begin	
+        if (_GEN_1) begin	
+          arvalid <= io_isu_axi_out_ready & io_in_bits_is_load | arvalid;	
+          awvalid <=
+            io_isu_axi_out_ready & ~io_in_bits_is_load & io_in_bits_mem_wr_en | awvalid;	
+        end
+        else begin	
+          arvalid <= ~(_GEN_2 & _GEN_3) & arvalid;	
+          awvalid <= (_GEN_2 | ~(_GEN_4 & _GEN_5)) & awvalid;	
+        end
+        valid <= (_GEN_9 | ~_GEN_8) & valid;	
+      end
+      if (~(_GEN | _GEN_1 | _GEN_2)) begin	
+        if (_GEN_4)	
+          wvalid <= _GEN_5 | wvalid;	
+        else	
+          wvalid <= ~(_GEN_6 & _GEN_7) & wvalid;	
+      end
+      _GEN_11 =
+        {{state},
+         {state},
+         {3'h0},
+         {_GEN_7 ? 3'h5 : state},
+         {_GEN_5 ? 3'h4 : state},
+         {_GEN_3 ? 3'h5 : state},
+         {io_isu_axi_out_ready
+            ? (io_in_bits_is_load ? 3'h2 : io_in_bits_mem_wr_en ? 3'h3 : state)
+            : state},
+         {io_in_valid ? {~_GEN_0, 2'h1} : state}};	
+      state <= _GEN_11[state];	
     end
   end 
   `ifdef ENABLE_INITIAL_REG_	
@@ -1257,40 +1322,21 @@ module ISU(
       `endif 
       `ifdef RANDOMIZE_REG_INIT	
         _RANDOM[/*Zero width*/ 1'b0] = `RANDOM;	
-        arvalid = _RANDOM[/*Zero width*/ 1'b0][0];	
+        store_finish = _RANDOM[/*Zero width*/ 1'b0][0];	
         load_finish = _RANDOM[/*Zero width*/ 1'b0][1];	
-        awvalid = _RANDOM[/*Zero width*/ 1'b0][2];	
-        store_finish = _RANDOM[/*Zero width*/ 1'b0][3];	
+        arvalid = _RANDOM[/*Zero width*/ 1'b0][2];	
+        awvalid = _RANDOM[/*Zero width*/ 1'b0][3];	
         wvalid = _RANDOM[/*Zero width*/ 1'b0][4];	
-        state = _RANDOM[/*Zero width*/ 1'b0][5];	
+        valid = _RANDOM[/*Zero width*/ 1'b0][5];	
+        state = _RANDOM[/*Zero width*/ 1'b0][8:6];	
       `endif 
     end 
     `ifdef FIRRTL_AFTER_INITIAL	
       `FIRRTL_AFTER_INITIAL	
     `endif 
   `endif 
-  Date_Memory Dmem (	
-    .clk         (clock),
-    .arvalid     (arvalid),	
-    .araddr      (io_in_bits_alu_out),
-    .load_unsign (io_in_bits_load_unsign),
-    .arready     (_Dmem_arready),
-    .rdata       (io_out_bits_dm_out),
-    .rresp       (/* unused */),
-    .rvalid      (_Dmem_rvalid),
-    .rready      (1'h1),	
-    .awvalid     (awvalid),	
-    .awaddr      (io_in_bits_alu_out),
-    .awready     (_Dmem_awready),
-    .wvalid      (wvalid),	
-    .wdata       (io_in_bits_data),
-    .len         (io_in_bits_len),
-    .wready      (_Dmem_wready),
-    .bresp       (_Dmem_bresp),
-    .bvalid      (/* unused */),
-    .bready      (1'h1)	
-  );
-  assign io_out_valid = state;	
+  assign io_out_valid = state == 3'h5;	
+  assign io_out_bits_dm_out = io_isu_axi_in_bits_rdata;	
   assign io_out_bits_alu_out = io_in_bits_alu_out;	
   assign io_out_bits_jump_jalr = io_in_bits_jump_jalr;	
   assign io_out_bits_jump_en = io_in_bits_jump_en;	
@@ -1304,6 +1350,17 @@ module ISU(
   assign io_out_bits_store_finish = store_finish;	
   assign io_out_bits_is_load = io_in_bits_is_load;	
   assign io_out_bits_isS_type = io_in_bits_isS_type;	
+  assign io_isu_axi_out_valid = valid;	
+  assign io_isu_axi_out_bits_arvalid = arvalid;	
+  assign io_isu_axi_out_bits_load_unsign = io_in_bits_load_unsign;	
+  assign io_isu_axi_out_bits_araddr = io_in_bits_alu_out;	
+  assign io_isu_axi_out_bits_awvalid = awvalid;	
+  assign io_isu_axi_out_bits_awaddr = io_in_bits_alu_out;	
+  assign io_isu_axi_out_bits_wvalid = wvalid;	
+  assign io_isu_axi_out_bits_wdata = io_in_bits_data;	
+  assign io_isu_axi_out_bits_wstrb = io_in_bits_len;	
+  assign io_isu_axi_in_ready = valid;	
+  assign io_isu_valid = valid;	
 endmodule
 
 module WBU(	
@@ -1442,6 +1499,133 @@ module PC(
   assign io_next_pc = pc;	
 endmodule
 
+
+module AXI(	
+  input         clock,	
+                reset,	
+  output        io_ifu_axi_in_ready,	
+  input         io_ifu_axi_in_valid,	
+                io_ifu_axi_in_bits_arvalid,	
+  input  [31:0] io_ifu_axi_in_bits_araddr,	
+  input         io_ifu_axi_out_ready,	
+  output        io_ifu_axi_out_bits_arready,	
+                io_ifu_axi_out_bits_rvalid,	
+  output [31:0] io_ifu_axi_out_bits_rdata,	
+  output        io_ifu_axi_out_bits_rresp,	
+                io_isu_axi_in_ready,	
+  input         io_isu_axi_in_valid,	
+                io_isu_axi_in_bits_arvalid,	
+                io_isu_axi_in_bits_load_unsign,	
+  input  [31:0] io_isu_axi_in_bits_araddr,	
+  input         io_isu_axi_in_bits_awvalid,	
+  input  [31:0] io_isu_axi_in_bits_awaddr,	
+  input         io_isu_axi_in_bits_wvalid,	
+  input  [31:0] io_isu_axi_in_bits_wdata,	
+                io_isu_axi_in_bits_wstrb,	
+  input         io_isu_axi_out_ready,	
+  output        io_isu_axi_out_bits_arready,	
+  output [31:0] io_isu_axi_out_bits_rdata,	
+  output        io_isu_axi_out_bits_rresp,	
+                io_isu_axi_out_bits_awready,	
+                io_isu_axi_out_bits_wready,	
+                io_isu_axi_out_bits_bresp,	
+  input         io_ifu_valid,	
+                io_isu_valid	
+);
+
+  wire        _Mem_arready;	
+  wire [31:0] _Mem_rdata;	
+  wire        _Mem_rresp;	
+  wire        _Mem_rvalid;	
+  wire        _Mem_awready;	
+  wire        _Mem_wready;	
+  wire        _Mem_bresp;	
+  reg  [2:0]  state;	
+  wire        _io_isu_axi_out_valid_T = state == 3'h4;	
+  wire        ifu_selected = state == 3'h1 | _io_isu_axi_out_valid_T & io_ifu_valid;	
+  wire        isu_selected = state == 3'h2 | _io_isu_axi_out_valid_T & io_isu_valid;	
+  always @(posedge clock) begin	
+    if (reset)	
+      state <= 3'h0;	
+    else if (state == 3'h0) begin	
+      if (io_ifu_valid)	
+        state <= 3'h1;	
+      else if (io_isu_valid)	
+        state <= 3'h2;	
+    end
+    else if (state == 3'h1) begin	
+      if (io_ifu_axi_in_valid & io_ifu_axi_in_bits_arvalid)	
+        state <= 3'h3;	
+    end
+    else if (state == 3'h2) begin	
+      if (io_isu_axi_in_valid & (io_isu_axi_in_bits_arvalid | io_isu_axi_in_bits_awvalid))	
+        state <= 3'h3;	
+    end
+    else if (state == 3'h3) begin	
+      if (io_ifu_axi_out_ready | io_isu_axi_out_ready)	
+        state <= 3'h4;	
+    end
+    else if (state == 3'h4 & (_Mem_rresp | _Mem_bresp))	
+      state <= 3'h0;	
+  end 
+  `ifdef ENABLE_INITIAL_REG_	
+    `ifdef FIRRTL_BEFORE_INITIAL	
+      `FIRRTL_BEFORE_INITIAL	
+    `endif 
+    initial begin	
+      automatic logic [31:0] _RANDOM[0:0];	
+      `ifdef INIT_RANDOM_PROLOG_	
+        `INIT_RANDOM_PROLOG_	
+      `endif 
+      `ifdef RANDOMIZE_REG_INIT	
+        _RANDOM[/*Zero width*/ 1'b0] = `RANDOM;	
+        state = _RANDOM[/*Zero width*/ 1'b0][2:0];	
+      `endif 
+    end 
+    `ifdef FIRRTL_AFTER_INITIAL	
+      `FIRRTL_AFTER_INITIAL	
+    `endif 
+  `endif 
+  Date_Memory Mem (	
+    .clk         (clock),
+    .arvalid     (ifu_selected ? io_ifu_axi_in_bits_arvalid : io_isu_axi_in_bits_arvalid),	
+    .araddr      (ifu_selected ? io_ifu_axi_in_bits_araddr : io_isu_axi_in_bits_araddr),	
+    .load_unsign (~ifu_selected & io_isu_axi_in_bits_load_unsign),	
+    .arready     (_Mem_arready),
+    .rdata       (_Mem_rdata),
+    .rresp       (_Mem_rresp),
+    .rvalid      (_Mem_rvalid),
+    .rready      (_io_isu_axi_out_valid_T),	
+    .awvalid     (~ifu_selected & io_isu_axi_in_bits_awvalid),	
+    .awaddr      (ifu_selected ? 32'h0 : io_isu_axi_in_bits_awaddr),	
+    .awready     (_Mem_awready),
+    .wvalid      (~ifu_selected & io_isu_axi_in_bits_wvalid & _io_isu_axi_out_valid_T),	
+    .wdata       (ifu_selected ? 32'h0 : io_isu_axi_in_bits_wdata),	
+    .len         (ifu_selected ? 32'h4 : io_isu_axi_in_bits_wstrb),	
+    .wready      (_Mem_wready),
+    .bresp       (_Mem_bresp),
+    .bvalid      (/* unused */),
+    .bready      (_io_isu_axi_out_valid_T)	
+  );
+  assign io_ifu_axi_in_ready = ifu_selected;	
+  assign io_ifu_axi_out_bits_arready =
+    ifu_selected & _Mem_arready & _io_isu_axi_out_valid_T;	
+  assign io_ifu_axi_out_bits_rvalid =
+    ifu_selected & _Mem_rvalid & _io_isu_axi_out_valid_T;	
+  assign io_ifu_axi_out_bits_rdata = _Mem_rdata;	
+  assign io_ifu_axi_out_bits_rresp = ifu_selected & _Mem_rresp & _io_isu_axi_out_valid_T;	
+  assign io_isu_axi_in_ready = isu_selected;	
+  assign io_isu_axi_out_bits_arready =
+    isu_selected & _Mem_arready & _io_isu_axi_out_valid_T;	
+  assign io_isu_axi_out_bits_rdata = _Mem_rdata;	
+  assign io_isu_axi_out_bits_rresp = isu_selected & _Mem_rresp & _io_isu_axi_out_valid_T;	
+  assign io_isu_axi_out_bits_awready =
+    isu_selected & _Mem_awready & _io_isu_axi_out_valid_T;	
+  assign io_isu_axi_out_bits_wready =
+    isu_selected & _Mem_wready & _io_isu_axi_out_valid_T;	
+  assign io_isu_axi_out_bits_bresp = isu_selected & _Mem_bresp & _io_isu_axi_out_valid_T;	
+endmodule
+
 module top(	
   input         clock,	
                 reset,	
@@ -1453,6 +1637,18 @@ module top(
                 io_wbu_valid	
 );
 
+  wire        _axi_io_ifu_axi_in_ready;	
+  wire        _axi_io_ifu_axi_out_bits_arready;	
+  wire        _axi_io_ifu_axi_out_bits_rvalid;	
+  wire [31:0] _axi_io_ifu_axi_out_bits_rdata;	
+  wire        _axi_io_ifu_axi_out_bits_rresp;	
+  wire        _axi_io_isu_axi_in_ready;	
+  wire        _axi_io_isu_axi_out_bits_arready;	
+  wire [31:0] _axi_io_isu_axi_out_bits_rdata;	
+  wire        _axi_io_isu_axi_out_bits_rresp;	
+  wire        _axi_io_isu_axi_out_bits_awready;	
+  wire        _axi_io_isu_axi_out_bits_wready;	
+  wire        _axi_io_isu_axi_out_bits_bresp;	
   wire [31:0] _pc_io_next_pc;	
   wire        _wbu_io_out_valid;	
   wire        _wbu_io_out_bits_jump_jalr;	
@@ -1481,6 +1677,17 @@ module top(
   wire        _isu_io_out_bits_store_finish;	
   wire        _isu_io_out_bits_is_load;	
   wire        _isu_io_out_bits_isS_type;	
+  wire        _isu_io_isu_axi_out_valid;	
+  wire        _isu_io_isu_axi_out_bits_arvalid;	
+  wire        _isu_io_isu_axi_out_bits_load_unsign;	
+  wire [31:0] _isu_io_isu_axi_out_bits_araddr;	
+  wire        _isu_io_isu_axi_out_bits_awvalid;	
+  wire [31:0] _isu_io_isu_axi_out_bits_awaddr;	
+  wire        _isu_io_isu_axi_out_bits_wvalid;	
+  wire [31:0] _isu_io_isu_axi_out_bits_wdata;	
+  wire [31:0] _isu_io_isu_axi_out_bits_wstrb;	
+  wire        _isu_io_isu_axi_in_ready;	
+  wire        _isu_io_isu_valid;	
   wire        _exu_io_out_valid;	
   wire [31:0] _exu_io_out_bits_alu_out;	
   wire [31:0] _exu_io_out_bits_data;	
@@ -1520,15 +1727,30 @@ module top(
   wire        _ifu_io_out_valid;	
   wire [31:0] _ifu_io_out_bits_inst;	
   wire [31:0] _ifu_io_out_bits_pc;	
+  wire        _ifu_io_ifu_axi_out_valid;	
+  wire        _ifu_io_ifu_axi_out_bits_arvalid;	
+  wire [31:0] _ifu_io_ifu_axi_out_bits_araddr;	
+  wire        _ifu_io_ifu_axi_in_ready;	
+  wire        _ifu_io_ifu_valid;	
   IFU ifu (	
-    .clock            (clock),
-    .reset            (reset),
-    .io_pc            (_pc_io_next_pc),	
-    .io_out_ready     (_idu_io_in_ready),	
-    .io_out_valid     (_ifu_io_out_valid),
-    .io_out_bits_inst (_ifu_io_out_bits_inst),
-    .io_out_bits_pc   (_ifu_io_out_bits_pc),
-    .io_diff_test     (io_diff_test)
+    .clock                       (clock),
+    .reset                       (reset),
+    .io_pc                       (_pc_io_next_pc),	
+    .io_out_ready                (_idu_io_in_ready),	
+    .io_out_valid                (_ifu_io_out_valid),
+    .io_out_bits_inst            (_ifu_io_out_bits_inst),
+    .io_out_bits_pc              (_ifu_io_out_bits_pc),
+    .io_ifu_axi_out_ready        (_axi_io_ifu_axi_in_ready),	
+    .io_ifu_axi_out_valid        (_ifu_io_ifu_axi_out_valid),
+    .io_ifu_axi_out_bits_arvalid (_ifu_io_ifu_axi_out_bits_arvalid),
+    .io_ifu_axi_out_bits_araddr  (_ifu_io_ifu_axi_out_bits_araddr),
+    .io_ifu_axi_in_ready         (_ifu_io_ifu_axi_in_ready),
+    .io_ifu_axi_in_bits_arready  (_axi_io_ifu_axi_out_bits_arready),	
+    .io_ifu_axi_in_bits_rvalid   (_axi_io_ifu_axi_out_bits_rvalid),	
+    .io_ifu_axi_in_bits_rdata    (_axi_io_ifu_axi_out_bits_rdata),	
+    .io_ifu_axi_in_bits_rresp    (_axi_io_ifu_axi_out_bits_rresp),	
+    .io_ifu_valid                (_ifu_io_ifu_valid),
+    .io_diff_test                (io_diff_test)
   );
   IDU idu (	
     .clock                   (clock),
@@ -1601,39 +1823,57 @@ module top(
     .io_alu_rsl              (io_alu_rsl)
   );
   ISU isu (	
-    .clock                    (clock),
-    .reset                    (reset),
-    .io_in_valid              (_exu_io_out_valid),	
-    .io_in_bits_alu_out       (_exu_io_out_bits_alu_out),	
-    .io_in_bits_data          (_exu_io_out_bits_data),	
-    .io_in_bits_mem_wr_en     (_exu_io_out_bits_mem_wr_en),	
-    .io_in_bits_len           (_exu_io_out_bits_len),	
-    .io_in_bits_load_unsign   (_exu_io_out_bits_load_unsign),	
-    .io_in_bits_jump_jalr     (_exu_io_out_bits_jump_jalr),	
-    .io_in_bits_jump_en       (_exu_io_out_bits_jump_en),	
-    .io_in_bits_imm           (_exu_io_out_bits_imm),	
-    .io_in_bits_is_ecall      (_exu_io_out_bits_is_ecall),	
-    .io_in_bits_is_mret       (_exu_io_out_bits_is_mret),	
-    .io_in_bits_mtvec         (_exu_io_out_bits_mtvec),	
-    .io_in_bits_epc           (_exu_io_out_bits_epc),	
-    .io_in_bits_rd1           (_exu_io_out_bits_rd1),	
-    .io_in_bits_is_load       (_exu_io_out_bits_is_load),	
-    .io_in_bits_isS_type      (_exu_io_out_bits_isS_type),	
-    .io_out_valid             (_isu_io_out_valid),
-    .io_out_bits_dm_out       (_isu_io_out_bits_dm_out),
-    .io_out_bits_alu_out      (_isu_io_out_bits_alu_out),
-    .io_out_bits_jump_jalr    (_isu_io_out_bits_jump_jalr),
-    .io_out_bits_jump_en      (_isu_io_out_bits_jump_en),
-    .io_out_bits_imm          (_isu_io_out_bits_imm),
-    .io_out_bits_is_ecall     (_isu_io_out_bits_is_ecall),
-    .io_out_bits_is_mret      (_isu_io_out_bits_is_mret),
-    .io_out_bits_mtvec        (_isu_io_out_bits_mtvec),
-    .io_out_bits_epc          (_isu_io_out_bits_epc),
-    .io_out_bits_rd1          (_isu_io_out_bits_rd1),
-    .io_out_bits_load_finish  (_isu_io_out_bits_load_finish),
-    .io_out_bits_store_finish (_isu_io_out_bits_store_finish),
-    .io_out_bits_is_load      (_isu_io_out_bits_is_load),
-    .io_out_bits_isS_type     (_isu_io_out_bits_isS_type)
+    .clock                           (clock),
+    .reset                           (reset),
+    .io_in_valid                     (_exu_io_out_valid),	
+    .io_in_bits_alu_out              (_exu_io_out_bits_alu_out),	
+    .io_in_bits_data                 (_exu_io_out_bits_data),	
+    .io_in_bits_mem_wr_en            (_exu_io_out_bits_mem_wr_en),	
+    .io_in_bits_len                  (_exu_io_out_bits_len),	
+    .io_in_bits_load_unsign          (_exu_io_out_bits_load_unsign),	
+    .io_in_bits_jump_jalr            (_exu_io_out_bits_jump_jalr),	
+    .io_in_bits_jump_en              (_exu_io_out_bits_jump_en),	
+    .io_in_bits_imm                  (_exu_io_out_bits_imm),	
+    .io_in_bits_is_ecall             (_exu_io_out_bits_is_ecall),	
+    .io_in_bits_is_mret              (_exu_io_out_bits_is_mret),	
+    .io_in_bits_mtvec                (_exu_io_out_bits_mtvec),	
+    .io_in_bits_epc                  (_exu_io_out_bits_epc),	
+    .io_in_bits_rd1                  (_exu_io_out_bits_rd1),	
+    .io_in_bits_is_load              (_exu_io_out_bits_is_load),	
+    .io_in_bits_isS_type             (_exu_io_out_bits_isS_type),	
+    .io_out_valid                    (_isu_io_out_valid),
+    .io_out_bits_dm_out              (_isu_io_out_bits_dm_out),
+    .io_out_bits_alu_out             (_isu_io_out_bits_alu_out),
+    .io_out_bits_jump_jalr           (_isu_io_out_bits_jump_jalr),
+    .io_out_bits_jump_en             (_isu_io_out_bits_jump_en),
+    .io_out_bits_imm                 (_isu_io_out_bits_imm),
+    .io_out_bits_is_ecall            (_isu_io_out_bits_is_ecall),
+    .io_out_bits_is_mret             (_isu_io_out_bits_is_mret),
+    .io_out_bits_mtvec               (_isu_io_out_bits_mtvec),
+    .io_out_bits_epc                 (_isu_io_out_bits_epc),
+    .io_out_bits_rd1                 (_isu_io_out_bits_rd1),
+    .io_out_bits_load_finish         (_isu_io_out_bits_load_finish),
+    .io_out_bits_store_finish        (_isu_io_out_bits_store_finish),
+    .io_out_bits_is_load             (_isu_io_out_bits_is_load),
+    .io_out_bits_isS_type            (_isu_io_out_bits_isS_type),
+    .io_isu_axi_out_ready            (_axi_io_isu_axi_in_ready),	
+    .io_isu_axi_out_valid            (_isu_io_isu_axi_out_valid),
+    .io_isu_axi_out_bits_arvalid     (_isu_io_isu_axi_out_bits_arvalid),
+    .io_isu_axi_out_bits_load_unsign (_isu_io_isu_axi_out_bits_load_unsign),
+    .io_isu_axi_out_bits_araddr      (_isu_io_isu_axi_out_bits_araddr),
+    .io_isu_axi_out_bits_awvalid     (_isu_io_isu_axi_out_bits_awvalid),
+    .io_isu_axi_out_bits_awaddr      (_isu_io_isu_axi_out_bits_awaddr),
+    .io_isu_axi_out_bits_wvalid      (_isu_io_isu_axi_out_bits_wvalid),
+    .io_isu_axi_out_bits_wdata       (_isu_io_isu_axi_out_bits_wdata),
+    .io_isu_axi_out_bits_wstrb       (_isu_io_isu_axi_out_bits_wstrb),
+    .io_isu_axi_in_ready             (_isu_io_isu_axi_in_ready),
+    .io_isu_axi_in_bits_arready      (_axi_io_isu_axi_out_bits_arready),	
+    .io_isu_axi_in_bits_rdata        (_axi_io_isu_axi_out_bits_rdata),	
+    .io_isu_axi_in_bits_rresp        (_axi_io_isu_axi_out_bits_rresp),	
+    .io_isu_axi_in_bits_awready      (_axi_io_isu_axi_out_bits_awready),	
+    .io_isu_axi_in_bits_wready       (_axi_io_isu_axi_out_bits_wready),	
+    .io_isu_axi_in_bits_bresp        (_axi_io_isu_axi_out_bits_bresp),	
+    .io_isu_valid                    (_isu_io_isu_valid)
   );
   WBU wbu (	
     .clock                   (clock),
@@ -1680,63 +1920,44 @@ module top(
     .io_in_bits_epc       (_wbu_io_out_bits_epc),	
     .io_in_bits_rd1       (_wbu_io_out_bits_rd1)	
   );
+  AXI axi (	
+    .clock                          (clock),
+    .reset                          (reset),
+    .io_ifu_axi_in_ready            (_axi_io_ifu_axi_in_ready),
+    .io_ifu_axi_in_valid            (_ifu_io_ifu_axi_out_valid),	
+    .io_ifu_axi_in_bits_arvalid     (_ifu_io_ifu_axi_out_bits_arvalid),	
+    .io_ifu_axi_in_bits_araddr      (_ifu_io_ifu_axi_out_bits_araddr),	
+    .io_ifu_axi_out_ready           (_ifu_io_ifu_axi_in_ready),	
+    .io_ifu_axi_out_bits_arready    (_axi_io_ifu_axi_out_bits_arready),
+    .io_ifu_axi_out_bits_rvalid     (_axi_io_ifu_axi_out_bits_rvalid),
+    .io_ifu_axi_out_bits_rdata      (_axi_io_ifu_axi_out_bits_rdata),
+    .io_ifu_axi_out_bits_rresp      (_axi_io_ifu_axi_out_bits_rresp),
+    .io_isu_axi_in_ready            (_axi_io_isu_axi_in_ready),
+    .io_isu_axi_in_valid            (_isu_io_isu_axi_out_valid),	
+    .io_isu_axi_in_bits_arvalid     (_isu_io_isu_axi_out_bits_arvalid),	
+    .io_isu_axi_in_bits_load_unsign (_isu_io_isu_axi_out_bits_load_unsign),	
+    .io_isu_axi_in_bits_araddr      (_isu_io_isu_axi_out_bits_araddr),	
+    .io_isu_axi_in_bits_awvalid     (_isu_io_isu_axi_out_bits_awvalid),	
+    .io_isu_axi_in_bits_awaddr      (_isu_io_isu_axi_out_bits_awaddr),	
+    .io_isu_axi_in_bits_wvalid      (_isu_io_isu_axi_out_bits_wvalid),	
+    .io_isu_axi_in_bits_wdata       (_isu_io_isu_axi_out_bits_wdata),	
+    .io_isu_axi_in_bits_wstrb       (_isu_io_isu_axi_out_bits_wstrb),	
+    .io_isu_axi_out_ready           (_isu_io_isu_axi_in_ready),	
+    .io_isu_axi_out_bits_arready    (_axi_io_isu_axi_out_bits_arready),
+    .io_isu_axi_out_bits_rdata      (_axi_io_isu_axi_out_bits_rdata),
+    .io_isu_axi_out_bits_rresp      (_axi_io_isu_axi_out_bits_rresp),
+    .io_isu_axi_out_bits_awready    (_axi_io_isu_axi_out_bits_awready),
+    .io_isu_axi_out_bits_wready     (_axi_io_isu_axi_out_bits_wready),
+    .io_isu_axi_out_bits_bresp      (_axi_io_isu_axi_out_bits_bresp),
+    .io_ifu_valid                   (_ifu_io_ifu_valid),	
+    .io_isu_valid                   (_isu_io_isu_valid)	
+  );
   assign io_pc = _idu_io_out_bits_pc;	
   assign io_inst = _ifu_io_out_bits_inst;	
   assign io_imm = _idu_io_out_bits_imm;	
   assign io_wbu_valid = _wbu_io_wbu_valid;	
 endmodule
 
-
-
-module Inst_Memory(
-    input clk,
-    input [31:0] pc,
-    output [31:0] inst,
-    input arvalid,
-    output arready,
-    output reg rresp,
-    output reg rvalid,
-    input rready,
-    input [31:0] awaddr,
-    input  awvalid,
-    output awready,
-    input [31:0] wdata,
-    input [31:0] wstrb,
-    input  wvalid,
-    output  wready,
-    output bresp,
-    output bvalid,
-    input  bready
-);
-
-    import "DPI-C" function int mem_read(input int pc, int len);
-
-    reg [31:0] inst_delay;
-
-    assign arready = 1;
-    always @(posedge clk) begin
-
-        if(arvalid && arready) begin
-            if(rready && !rvalid) begin  
-                rresp <= 1;
-                rvalid <= 1;
-                inst_delay <= mem_read(pc, 4);
-            end
-        end
-
-        if(rvalid && rready) begin     
-            rvalid <= 0;
-            rresp <= 0;
-        end
-    end
-    
-    assign inst = inst_delay;
-
-    assign awready = 0;
-    assign bresp = 0;
-    assign bvalid = 0;
-    
-endmodule
 
 
 module Date_Memory(
