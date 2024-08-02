@@ -1,4 +1,4 @@
-PRG = top
+PRG = Elaborate
 BUILD = generated
 
 sim:

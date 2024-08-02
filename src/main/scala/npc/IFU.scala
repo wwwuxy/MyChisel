@@ -70,8 +70,8 @@ class IFU extends  Module{
       }
     }
 
-    io.ifu_axi_out.valid := (state =/= sValid)
-    io.ifu_axi_in.ready  := (state =/= sValid)
+    io.ifu_axi_out.valid := valid
+    io.ifu_axi_in.ready  := valid
     
     io.out.valid     := (state === sValid)
     io.out.bits.pc   := IPC

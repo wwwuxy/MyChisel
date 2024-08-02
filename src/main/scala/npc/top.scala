@@ -7,10 +7,10 @@ import chisel3.util._
 
 class top extends Module{
     val io = IO(new Bundle {
-        val pc = Output(UInt(32.W))
-        val alu_rsl = Output(UInt(32.W))
-        val inst =  Output(UInt(32.W))
-        val imm = Output(UInt(32.W))
+        val pc        = Output(UInt(32.W))
+        val alu_rsl   = Output(UInt(32.W))
+        val inst      = Output(UInt(32.W))
+        val imm       = Output(UInt(32.W))
         val diff_test = Output(Bool())
         val wbu_valid = Output(Bool())
     })
@@ -21,16 +21,16 @@ class top extends Module{
     val isu = Module(new ISU)
     val wbu = Module(new WBU)
     val pc  = Module(new PC)
-    val axi = Module(new AXI)
+    val xbar = Module(new XBAR)
 
     StageConnect(ifu.io.out, idu.io.in)
-    StageConnect(ifu.io.ifu_axi_out, axi.io.ifu_axi_in)
-    StageConnect(ifu.io.ifu_axi_in, axi.io.ifu_axi_out)
+    StageConnect(ifu.io.ifu_axi_out, xbar.io.ifu_axi_in)
+    StageConnect(ifu.io.ifu_axi_in, xbar.io.ifu_axi_out)
     StageConnect(idu.io.out, exu.io.in)
     StageConnect(exu.io.out, isu.io.in)
     StageConnect(isu.io.out, wbu.io.in)
-    StageConnect(isu.io.isu_axi_out, axi.io.isu_axi_in)
-    StageConnect(isu.io.isu_axi_in, axi.io.isu_axi_out)   
+    StageConnect(isu.io.isu_axi_out, xbar.io.isu_axi_in)
+    StageConnect(isu.io.isu_axi_in, xbar.io.isu_axi_out)   
     StageConnect(wbu.io.out, pc.io.in)
   
     ifu.io.pc := pc.io.next_pc
@@ -40,8 +40,9 @@ class top extends Module{
     idu.io.wbu_valid := wbu.io.wbu_valid
     isu.io.wbu_valid := wbu.io.wbu_valid
 
-    axi.io.ifu_valid := ifu.io.ifu_valid
-    axi.io.isu_valid := isu.io.isu_valid
+//AXI仲裁器
+    xbar.io.ifu_valid := ifu.io.ifu_valid
+    xbar.io.isu_valid := isu.io.isu_valid
 
 //for sdb    
     io.pc := idu.io.out.bits.pc
@@ -57,30 +58,8 @@ object StageConnect {
     val arch = "multi"
     if      (arch == "single")   { right.bits := left.bits }
     else if (arch == "multi")    { right <> left }
-    else if (arch == "pipeline") { right <> RegEnable(left, left.fire) }
-    else if (arch == "ooo")      { right <> Queue(left, 16) }
+    // else if (arch == "pipeline") { right <> RegEnable(left, left.fire) }
+    // else if (arch == "ooo")      { right <> Queue(left, 16) }
   }
 }
-
-
-
-object top extends App{
-    var filltlflag = Array[String]()
-    filltlflag = filltlflag ++ Array(
-        "--target-dir", "generated",
-        "--target:verilog",
-        // "--split-verilog",
-        // "--lowering-options=" + Seq(
-        //     "disallowLocalVariables",
-        //     "disallowPackedArrays"
-        // ).mkString(","),
-        // "--disable-all-randomization"
-        )
-
-    ChiselStage.emitSystemVerilogFile(
-        new top,
-        filltlflag
-    )
-}
-
 
