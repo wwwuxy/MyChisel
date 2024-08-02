@@ -9,58 +9,73 @@ class UART extends Module {
     val out = Decoupled(new FROM_AXI)
 })
   
-// Device register to store data
+  // Device register to store data
     val deviceReg = RegInit(0.U(32.W))
+    val mtime     = RegInit(0.U(64.W))
   
-// Default values for outputs
-    io.out.bits.arready := true.B
-    io.out.bits.rdata := 0.U
+  // Default values for outputs
 
+    val arready = RegInit(true.B)
     val rresp   = RegInit(false.B)
     val rvalid  = RegInit(false.B)
     val awready = RegInit(false.B)
     val wready  = RegInit(false.B)
     val bresp   = RegInit(false.B)
     val bvalid  = RegInit(false.B)
+    val rdata   = RegInit(0.U(32.W))
 
+    io.out.bits.arready := arready
     io.out.bits.rresp   := rresp
     io.out.bits.rvalid  := rvalid
     io.out.bits.bresp   := bresp
     io.out.bits.bvalid  := bvalid
     io.out.bits.wready  := wready
     io.out.bits.awready := awready
-  
-// Read data handshake
+    io.out.bits.rdata   := rdata
+    deviceReg           := io.in.bits.wdata
+    
+  // Increment mtime
+    mtime := mtime + 1.U
+
+  // Read data handshake
     when(io.out.bits.arready && io.in.bits.arvalid) {
-        io.out.bits.rdata  := deviceReg
-        io.out.bits.rvalid := true.B
+        rvalid := true.B
         when(io.in.bits.araddr < "h8000_0000".U || io.in.bits.araddr > "h87ff_ffff".U){
-            io.out.bits.rresp := true.B
+            when(io.in.bits.araddr === "ha000_0048".U){
+                rresp := true.B
+                rdata := mtime(31, 0)
+                arready := false.B
+            }.elsewhen(io.in.bits.araddr === "ha000_004c".U){
+                rresp := true.B
+                rdata := mtime(63, 32)
+                arready := false.B
+            }
         }.otherwise{
-            io.out.bits.rresp := false.B
+            rresp := false.B
         }
     }
 
-// Reset read handshake signals after data is accepted
+  // Reset read handshake signals after data is accepted
     when(rvalid && io.in.bits.rready) {
         rvalid := false.B
+        rresp  := false.B
+        arready := true.B
     }
 
-// Write address handshake
+  // Write address handshake
     when(io.in.bits.awvalid && !awready) {
         awready := true.B
     }
   
-// Write data handshake
+  // Write data handshake
     when(io.in.bits.wvalid && !wready) {
         wready := true.B
     }
   
-// Write response handshake
+  // Write response handshake
     when(wready && io.in.bits.wvalid) {
         when(io.in.bits.awaddr === "ha000_03f8".U){   //串口输出
-            deviceReg := io.in.bits.wdata
-            printf("%c", deviceReg(7, 0))
+            printf("%c", deviceReg(7, 0))      //仅仅是调试语句
             bvalid := true.B
             bresp  := true.B
         }.otherwise{
@@ -69,7 +84,7 @@ class UART extends Module {
         }
     }
         
-// Reset write handshake signals after response is accepted
+  // Reset write handshake signals after response is accepted
     when(bvalid && io.in.bits.bready) {
         wready := false.B
         bvalid := false.B
@@ -79,6 +94,6 @@ class UART extends Module {
         bresp := false.B
     }
 
-    io.in.ready := true.B
+    io.in.ready  := io.out.valid
     io.out.valid := true.B
 }

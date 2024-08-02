@@ -24,8 +24,9 @@ class REGISTERFILE extends Module{
     val rs1     = io.inst(19, 15)
     val rs2     = io.inst(24, 20)
     val rd      = io.inst(11, 7)
-        io.rd1 := 0.U
-        io.rd2 := 0.U
+        
+    io.rd1 := 0.U
+    io.rd2 := 0.U
 
     val storepc = io.pc + 4.U
     val rf_wr   = VecInit(Seq(io.alu_out, io.dm_out, storepc))

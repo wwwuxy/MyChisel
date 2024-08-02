@@ -1296,12 +1296,14 @@ module UART(
                 reset,	
                 io_in_bits_arvalid,	
   input  [31:0] io_in_bits_araddr,	
-  input         io_in_bits_awvalid,	
+  input         io_in_bits_rready,	
+                io_in_bits_awvalid,	
   input  [31:0] io_in_bits_awaddr,	
   input         io_in_bits_wvalid,	
   input  [31:0] io_in_bits_wdata,	
   input         io_in_bits_bready,	
-  output        io_out_bits_rvalid,	
+  output        io_out_bits_arready,	
+                io_out_bits_rvalid,	
   output [31:0] io_out_bits_rdata,	
   output        io_out_bits_rresp,	
                 io_out_bits_awready,	
@@ -1310,10 +1312,15 @@ module UART(
 );
 
   reg  [31:0] deviceReg;	
+  reg  [63:0] mtime;	
+  reg         arready;	
+  reg         rresp;	
+  reg         rvalid;	
   reg         awready;	
   reg         wready;	
   reg         bresp;	
   reg         bvalid;	
+  reg  [31:0] rdata;	
   wire        _GEN = wready & io_in_bits_wvalid;	
   wire        _GEN_0 = io_in_bits_awaddr == 32'hA00003F8;	
   wire        _GEN_1 = _GEN & _GEN_0;	
@@ -1326,25 +1333,50 @@ module UART(
   always @(posedge clock) begin	
     if (reset) begin	
       deviceReg <= 32'h0;	
+      mtime <= 64'h0;	
+      arready <= 1'h1;	
+      rresp <= 1'h0;	
+      rvalid <= 1'h0;	
       awready <= 1'h0;	
       wready <= 1'h0;	
       bresp <= 1'h0;	
       bvalid <= 1'h0;	
+      rdata <= 32'h0;	
     end
     else begin	
-      automatic logic _GEN_2 = bvalid & io_in_bits_bready;	
+      automatic logic _GEN_2 = arready & io_in_bits_arvalid;	
+      automatic logic _GEN_3 =
+        ~(io_in_bits_araddr[31]) | io_in_bits_araddr > 32'h87FFFFFF;	
+      automatic logic _GEN_4;	
+      automatic logic _GEN_5;	
+      automatic logic _GEN_6;	
+      automatic logic _GEN_7 = rvalid & io_in_bits_rready;	
+      automatic logic _GEN_8 = bvalid & io_in_bits_bready;	
+      _GEN_4 = io_in_bits_araddr == 32'hA0000048;	
+      _GEN_5 = io_in_bits_araddr == 32'hA000004C;	
+      _GEN_6 = _GEN_4 | _GEN_5;	
       if (_GEN_1)	
         deviceReg <= io_in_bits_wdata;	
+      mtime <= mtime + 64'h1;	
+      arready <= _GEN_7 | ~(_GEN_2 & _GEN_3 & _GEN_6) & arready;	
+      rresp <= ~_GEN_7 & (_GEN_2 ? _GEN_3 & (_GEN_6 | rresp) : rresp);	
+      rvalid <= ~_GEN_7 & (_GEN_2 | rvalid);	
       awready <= io_in_bits_awvalid & ~awready | awready;	
-      wready <= ~_GEN_2 & (io_in_bits_wvalid & ~wready | wready);	
+      wready <= ~_GEN_8 & (io_in_bits_wvalid & ~wready | wready);	
       bresp <= ~(bresp & ~bvalid) & (_GEN ? _GEN_0 : bresp);	
-      bvalid <= ~_GEN_2 & (_GEN | bvalid);	
+      bvalid <= ~_GEN_8 & (_GEN | bvalid);	
+      if (_GEN_2 & _GEN_3) begin	
+        if (_GEN_4)	
+          rdata <= mtime[31:0];	
+        else if (_GEN_5)	
+          rdata <= mtime[63:32];	
+      end
     end
   end 
-  assign io_out_bits_rvalid = io_in_bits_arvalid;	
-  assign io_out_bits_rdata = io_in_bits_arvalid ? deviceReg : 32'h0;	
-  assign io_out_bits_rresp =
-    io_in_bits_arvalid & (~(io_in_bits_araddr[31]) | io_in_bits_araddr > 32'h87FFFFFF);	
+  assign io_out_bits_arready = arready;	
+  assign io_out_bits_rvalid = rvalid;	
+  assign io_out_bits_rdata = rdata;	
+  assign io_out_bits_rresp = rresp;	
   assign io_out_bits_awready = awready;	
   assign io_out_bits_wready = wready;	
   assign io_out_bits_bresp = bresp;	
@@ -1383,6 +1415,7 @@ module XBAR(
                 io_isu_valid	
 );
 
+  wire        _Uart_io_out_bits_arready;	
   wire        _Uart_io_out_bits_rvalid;	
   wire [31:0] _Uart_io_out_bits_rdata;	
   wire        _Uart_io_out_bits_rresp;	
@@ -1403,13 +1436,14 @@ module XBAR(
   reg         uart_selected;	
   wire        _Uart_io_in_bits_arvalid_T =
     ifu_selected ? io_ifu_axi_in_bits_arvalid : io_isu_axi_in_bits_arvalid;	
-  wire        _io_isu_axi_out_bits_arready_T = uart_selected | _Sram_arready;	
+  wire        io_isu_axi_out_bits_arready_0 =
+    uart_selected ? _Uart_io_out_bits_arready : _Sram_arready;	
   wire [31:0] _Uart_io_in_bits_araddr_T =
     ifu_selected ? io_ifu_axi_in_bits_araddr : io_isu_axi_in_bits_araddr;	
   wire        _GEN = uart_selected | ifu_selected;	
   wire [31:0] io_isu_axi_out_bits_rdata_0 =
     uart_selected ? _Uart_io_out_bits_rdata : _Sram_rdata;	
-  wire        _io_isu_axi_out_bits_rresp_T =
+  wire        io_isu_axi_out_bits_rresp_0 =
     uart_selected ? _Uart_io_out_bits_rresp : _Sram_rresp;	
   wire        _GEN_0 = ~uart_selected | ifu_selected;	
   always @(posedge clock) begin	
@@ -1440,10 +1474,10 @@ module XBAR(
       else if (state == 3'h4 & (_Sram_rresp | _Sram_bresp))	
         state <= 3'h0;	
       uart_selected <=
-        ifu_selected
-        & (~(io_ifu_axi_in_bits_araddr[31]) | io_ifu_axi_in_bits_araddr > 32'h87FFFFFF)
+        isu_selected
+        & (~(io_isu_axi_in_bits_araddr[31]) | io_isu_axi_in_bits_araddr > 32'h87FFFFFF)
         | isu_selected
-        & (~(io_isu_axi_in_bits_araddr[31]) | io_isu_axi_in_bits_araddr > 32'h87FFFFFF);	
+        & (~(io_isu_axi_in_bits_awaddr[31]) | io_isu_axi_in_bits_awaddr > 32'h87FFFFFF);	
     end
   end 
   SRAM Sram (	
@@ -1455,29 +1489,31 @@ module XBAR(
     .rdata       (_Sram_rdata),
     .rresp       (_Sram_rresp),
     .rvalid      (_Sram_rvalid),
-    .rready      (~uart_selected & _io_isu_axi_out_valid_T),	
+    .rready      (~uart_selected),	
     .awvalid     (~_GEN & io_isu_axi_in_bits_awvalid),	
     .awaddr      (_GEN ? 32'h0 : io_isu_axi_in_bits_awaddr),	
     .awready     (_Sram_awready),
-    .wvalid      (~_GEN & io_isu_axi_in_bits_wvalid & _io_isu_axi_out_valid_T),	
+    .wvalid      (~_GEN & io_isu_axi_in_bits_wvalid),	
     .wdata       (_GEN ? 32'h0 : io_isu_axi_in_bits_wdata),	
     .len
       (uart_selected ? 32'h0 : ifu_selected ? 32'h4 : io_isu_axi_in_bits_wstrb),	
     .wready      (_Sram_wready),
     .bresp       (_Sram_bresp),
     .bvalid      (/* unused */),
-    .bready      (~uart_selected & _io_isu_axi_out_valid_T)	
+    .bready      (~uart_selected)	
   );
   UART Uart (	
     .clock               (clock),
     .reset               (reset),
     .io_in_bits_arvalid  (uart_selected & _Uart_io_in_bits_arvalid_T),	
     .io_in_bits_araddr   (uart_selected ? _Uart_io_in_bits_araddr_T : 32'h0),	
+    .io_in_bits_rready   (uart_selected),	
     .io_in_bits_awvalid  (uart_selected & ~ifu_selected & io_isu_axi_in_bits_awvalid),	
     .io_in_bits_awaddr   (_GEN_0 ? 32'h0 : io_isu_axi_in_bits_awaddr),	
     .io_in_bits_wvalid   (uart_selected & ~ifu_selected & io_isu_axi_in_bits_wvalid),	
     .io_in_bits_wdata    (_GEN_0 ? 32'h0 : io_isu_axi_in_bits_wdata),	
     .io_in_bits_bready   (uart_selected),	
+    .io_out_bits_arready (_Uart_io_out_bits_arready),
     .io_out_bits_rvalid  (_Uart_io_out_bits_rvalid),
     .io_out_bits_rdata   (_Uart_io_out_bits_rdata),
     .io_out_bits_rresp   (_Uart_io_out_bits_rresp),
@@ -1486,25 +1522,21 @@ module XBAR(
     .io_out_bits_bresp   (_Uart_io_out_bits_bresp)
   );
   assign io_ifu_axi_in_ready = ifu_selected;	
-  assign io_ifu_axi_out_bits_arready =
-    _io_isu_axi_out_bits_arready_T & _io_isu_axi_out_valid_T;	
+  assign io_ifu_axi_out_bits_arready = io_isu_axi_out_bits_arready_0;	
   assign io_ifu_axi_out_bits_rvalid =
-    (uart_selected ? _Uart_io_out_bits_rvalid : _Sram_rvalid) & _io_isu_axi_out_valid_T;	
+    uart_selected ? _Uart_io_out_bits_rvalid : _Sram_rvalid;	
   assign io_ifu_axi_out_bits_rdata = io_isu_axi_out_bits_rdata_0;	
-  assign io_ifu_axi_out_bits_rresp =
-    _io_isu_axi_out_bits_rresp_T & _io_isu_axi_out_valid_T;	
+  assign io_ifu_axi_out_bits_rresp = io_isu_axi_out_bits_rresp_0;	
   assign io_isu_axi_in_ready = isu_selected;	
-  assign io_isu_axi_out_bits_arready =
-    _io_isu_axi_out_bits_arready_T & _io_isu_axi_out_valid_T;	
+  assign io_isu_axi_out_bits_arready = io_isu_axi_out_bits_arready_0;	
   assign io_isu_axi_out_bits_rdata = io_isu_axi_out_bits_rdata_0;	
-  assign io_isu_axi_out_bits_rresp =
-    _io_isu_axi_out_bits_rresp_T & _io_isu_axi_out_valid_T;	
+  assign io_isu_axi_out_bits_rresp = io_isu_axi_out_bits_rresp_0;	
   assign io_isu_axi_out_bits_awready =
-    (uart_selected ? _Uart_io_out_bits_awready : _Sram_awready) & _io_isu_axi_out_valid_T;	
+    uart_selected ? _Uart_io_out_bits_awready : _Sram_awready;	
   assign io_isu_axi_out_bits_wready =
-    (uart_selected ? _Uart_io_out_bits_wready : _Sram_wready) & _io_isu_axi_out_valid_T;	
+    uart_selected ? _Uart_io_out_bits_wready : _Sram_wready;	
   assign io_isu_axi_out_bits_bresp =
-    (uart_selected ? _Uart_io_out_bits_bresp : _Sram_bresp) & _io_isu_axi_out_valid_T;	
+    uart_selected ? _Uart_io_out_bits_bresp : _Sram_bresp;	
 endmodule
 
 module top(	
