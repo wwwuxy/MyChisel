@@ -1068,6 +1068,7 @@ module ISU(
                 io_isu_axi_out_bits_arvalid,	
                 io_isu_axi_out_bits_load_unsign,	
   output [31:0] io_isu_axi_out_bits_araddr,	
+  output [2:0]  io_isu_axi_out_bits_arsize,	
   output        io_isu_axi_out_bits_awvalid,	
   output [31:0] io_isu_axi_out_bits_awaddr,	
   output        io_isu_axi_out_bits_wvalid,	
@@ -1182,6 +1183,7 @@ module ISU(
   assign io_isu_axi_out_bits_arvalid = arvalid;	
   assign io_isu_axi_out_bits_load_unsign = io_in_bits_load_unsign;	
   assign io_isu_axi_out_bits_araddr = io_in_bits_alu_out;	
+  assign io_isu_axi_out_bits_arsize = io_in_bits_len[2:0];	
   assign io_isu_axi_out_bits_awvalid = awvalid;	
   assign io_isu_axi_out_bits_awaddr = io_in_bits_alu_out;	
   assign io_isu_axi_out_bits_wvalid = wvalid;	
@@ -1323,10 +1325,9 @@ module UART(
   reg  [31:0] rdata;	
   wire        _GEN = wready & io_in_bits_wvalid;	
   wire        _GEN_0 = io_in_bits_awaddr == 32'hA00003F8;	
-  wire        _GEN_1 = _GEN & _GEN_0;	
   `ifndef SYNTHESIS	
     always @(posedge clock) begin	
-      if ((`PRINTF_COND_) & _GEN_1 & ~reset)	
+      if ((`PRINTF_COND_) & _GEN & _GEN_0 & ~reset)	
         $fwrite(32'h80000002, "%c", deviceReg[7:0]);	
     end 
   `endif 
@@ -1344,31 +1345,30 @@ module UART(
       rdata <= 32'h0;	
     end
     else begin	
-      automatic logic _GEN_2 = arready & io_in_bits_arvalid;	
-      automatic logic _GEN_3 =
+      automatic logic _GEN_1 = arready & io_in_bits_arvalid;	
+      automatic logic _GEN_2 =
         ~(io_in_bits_araddr[31]) | io_in_bits_araddr > 32'h87FFFFFF;	
+      automatic logic _GEN_3;	
       automatic logic _GEN_4;	
       automatic logic _GEN_5;	
-      automatic logic _GEN_6;	
-      automatic logic _GEN_7 = rvalid & io_in_bits_rready;	
-      automatic logic _GEN_8 = bvalid & io_in_bits_bready;	
-      _GEN_4 = io_in_bits_araddr == 32'hA0000048;	
-      _GEN_5 = io_in_bits_araddr == 32'hA000004C;	
-      _GEN_6 = _GEN_4 | _GEN_5;	
-      if (_GEN_1)	
-        deviceReg <= io_in_bits_wdata;	
+      automatic logic _GEN_6 = rvalid & io_in_bits_rready;	
+      automatic logic _GEN_7 = bvalid & io_in_bits_bready;	
+      _GEN_3 = io_in_bits_araddr == 32'hA0000048;	
+      _GEN_4 = io_in_bits_araddr == 32'hA000004C;	
+      _GEN_5 = _GEN_3 | _GEN_4;	
+      deviceReg <= io_in_bits_wdata;	
       mtime <= mtime + 64'h1;	
-      arready <= _GEN_7 | ~(_GEN_2 & _GEN_3 & _GEN_6) & arready;	
-      rresp <= ~_GEN_7 & (_GEN_2 ? _GEN_3 & (_GEN_6 | rresp) : rresp);	
-      rvalid <= ~_GEN_7 & (_GEN_2 | rvalid);	
+      arready <= _GEN_6 | ~(_GEN_1 & _GEN_2 & _GEN_5) & arready;	
+      rresp <= ~_GEN_6 & (_GEN_1 ? _GEN_2 & (_GEN_5 | rresp) : rresp);	
+      rvalid <= ~_GEN_6 & (_GEN_1 | rvalid);	
       awready <= io_in_bits_awvalid & ~awready | awready;	
-      wready <= ~_GEN_8 & (io_in_bits_wvalid & ~wready | wready);	
+      wready <= ~_GEN_7 & (io_in_bits_wvalid & ~wready | wready);	
       bresp <= ~(bresp & ~bvalid) & (_GEN ? _GEN_0 : bresp);	
-      bvalid <= ~_GEN_8 & (_GEN | bvalid);	
-      if (_GEN_2 & _GEN_3) begin	
-        if (_GEN_4)	
+      bvalid <= ~_GEN_7 & (_GEN | bvalid);	
+      if (_GEN_1 & _GEN_2) begin	
+        if (_GEN_3)	
           rdata <= mtime[31:0];	
-        else if (_GEN_5)	
+        else if (_GEN_4)	
           rdata <= mtime[63:32];	
       end
     end
@@ -1399,6 +1399,7 @@ module XBAR(
                 io_isu_axi_in_bits_arvalid,	
                 io_isu_axi_in_bits_load_unsign,	
   input  [31:0] io_isu_axi_in_bits_araddr,	
+  input  [2:0]  io_isu_axi_in_bits_arsize,	
   input         io_isu_axi_in_bits_awvalid,	
   input  [31:0] io_isu_axi_in_bits_awaddr,	
   input         io_isu_axi_in_bits_wvalid,	
@@ -1485,6 +1486,7 @@ module XBAR(
     .arvalid     (~uart_selected & _Uart_io_in_bits_arvalid_T),	
     .araddr      (uart_selected ? 32'h0 : _Uart_io_in_bits_araddr_T),	
     .load_unsign (~_GEN & io_isu_axi_in_bits_load_unsign),	
+    .arsize      (uart_selected ? 3'h0 : ifu_selected ? 3'h4 : io_isu_axi_in_bits_arsize),	
     .arready     (_Sram_arready),
     .rdata       (_Sram_rdata),
     .rresp       (_Sram_rresp),
@@ -1495,8 +1497,7 @@ module XBAR(
     .awready     (_Sram_awready),
     .wvalid      (~_GEN & io_isu_axi_in_bits_wvalid),	
     .wdata       (_GEN ? 32'h0 : io_isu_axi_in_bits_wdata),	
-    .len
-      (uart_selected ? 32'h0 : ifu_selected ? 32'h4 : io_isu_axi_in_bits_wstrb),	
+    .wstrb       (_GEN ? 32'h0 : io_isu_axi_in_bits_wstrb),	
     .wready      (_Sram_wready),
     .bresp       (_Sram_bresp),
     .bvalid      (/* unused */),
@@ -1594,6 +1595,7 @@ module top(
   wire        _isu_io_isu_axi_out_bits_arvalid;	
   wire        _isu_io_isu_axi_out_bits_load_unsign;	
   wire [31:0] _isu_io_isu_axi_out_bits_araddr;	
+  wire [2:0]  _isu_io_isu_axi_out_bits_arsize;	
   wire        _isu_io_isu_axi_out_bits_awvalid;	
   wire [31:0] _isu_io_isu_axi_out_bits_awaddr;	
   wire        _isu_io_isu_axi_out_bits_wvalid;	
@@ -1774,6 +1776,7 @@ module top(
     .io_isu_axi_out_bits_arvalid     (_isu_io_isu_axi_out_bits_arvalid),
     .io_isu_axi_out_bits_load_unsign (_isu_io_isu_axi_out_bits_load_unsign),
     .io_isu_axi_out_bits_araddr      (_isu_io_isu_axi_out_bits_araddr),
+    .io_isu_axi_out_bits_arsize      (_isu_io_isu_axi_out_bits_arsize),
     .io_isu_axi_out_bits_awvalid     (_isu_io_isu_axi_out_bits_awvalid),
     .io_isu_axi_out_bits_awaddr      (_isu_io_isu_axi_out_bits_awaddr),
     .io_isu_axi_out_bits_wvalid      (_isu_io_isu_axi_out_bits_wvalid),
@@ -1850,6 +1853,7 @@ module top(
     .io_isu_axi_in_bits_arvalid     (_isu_io_isu_axi_out_bits_arvalid),	
     .io_isu_axi_in_bits_load_unsign (_isu_io_isu_axi_out_bits_load_unsign),	
     .io_isu_axi_in_bits_araddr      (_isu_io_isu_axi_out_bits_araddr),	
+    .io_isu_axi_in_bits_arsize      (_isu_io_isu_axi_out_bits_arsize),	
     .io_isu_axi_in_bits_awvalid     (_isu_io_isu_axi_out_bits_awvalid),	
     .io_isu_axi_in_bits_awaddr      (_isu_io_isu_axi_out_bits_awaddr),	
     .io_isu_axi_in_bits_wvalid      (_isu_io_isu_axi_out_bits_wvalid),	
@@ -1878,6 +1882,7 @@ module SRAM(
     input arvalid,
     input [31:0] araddr,
     input load_unsign,
+    input [3:0] arsize,
     output arready,
 
     output reg [31:0] rdata,
@@ -1891,7 +1896,7 @@ module SRAM(
 
     input wvalid,
     input [31:0] wdata,
-    input [31:0] len,
+    input [31:0] wstrb,
     output reg wready,
 
     output reg bresp,
@@ -1915,25 +1920,25 @@ module SRAM(
                 rresp <= 1;
                 rvalid <= 1;
                 if(load_unsign) begin
-                    if(len == 1) begin
+                    if(arsize == 1) begin
                         data_delay <= {24'b0, mem_read(araddr, 1)};
                     end
-                    else if(len == 2) begin
+                    else if(arsize == 2) begin
                         data_delay <= {16'b0, mem_read(araddr, 2)};
                     end
-                    else if(len == 4) begin
+                    else if(arsize == 4) begin
                         data_delay <= mem_read(araddr, 4);
                     end
                 end
                 else begin
-                    temp_data = mem_read(araddr, len);
-                    if(len == 1) begin
+                    temp_data = mem_read(araddr, arsize);
+                    if(arsize == 1) begin
                         data_delay <= {{24{temp_data[7]}}, temp_data[7:0]};
                     end
-                    else if(len == 2) begin
+                    else if(arsize == 2) begin
                         data_delay <= {{16{temp_data[15]}}, temp_data[15:0]};
                     end
-                    else if(len == 4) begin
+                    else if(arsize == 4) begin
                         data_delay <= mem_read(araddr, 4);
                     end
                 end
@@ -1950,7 +1955,7 @@ module SRAM(
 
         if (wvalid && !wready) begin  
                 wready <= 1;
-                mem_write(awaddr, len, wdata);
+                mem_write(awaddr, wstrb, wdata);
                 bvalid <= 1;
             end
 

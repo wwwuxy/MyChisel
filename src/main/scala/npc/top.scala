@@ -15,12 +15,12 @@ class top extends Module{
         val wbu_valid = Output(Bool())
     })
 
-    val ifu = Module(new IFU)
-    val idu = Module(new IDU)
-    val exu = Module(new EXU)
-    val isu = Module(new ISU)
-    val wbu = Module(new WBU)
-    val pc  = Module(new PC)
+    val ifu  = Module(new IFU)
+    val idu  = Module(new IDU)
+    val exu  = Module(new EXU)
+    val isu  = Module(new ISU)
+    val wbu  = Module(new WBU)
+    val pc   = Module(new PC)
     val xbar = Module(new XBAR)
 
     StageConnect(ifu.io.out, idu.io.in)
@@ -40,15 +40,15 @@ class top extends Module{
     idu.io.wbu_valid := wbu.io.wbu_valid
     isu.io.wbu_valid := wbu.io.wbu_valid
 
-//AXI仲裁器
+  //AXI仲裁器
     xbar.io.ifu_valid := ifu.io.ifu_valid
     xbar.io.isu_valid := isu.io.isu_valid
 
-//for sdb    
-    io.pc := idu.io.out.bits.pc
-    io.alu_rsl := exu.io.alu_rsl
-    io.inst := ifu.io.out.bits.inst
-    io.imm := idu.io.out.bits.imm
+  //for sdb    
+    io.pc        := idu.io.out.bits.pc
+    io.alu_rsl   := exu.io.alu_rsl
+    io.inst      := ifu.io.out.bits.inst
+    io.imm       := idu.io.out.bits.imm
     io.diff_test := ifu.io.diff_test
     io.wbu_valid := wbu.io.wbu_valid
 }
@@ -58,8 +58,8 @@ object StageConnect {
     val arch = "multi"
     if      (arch == "single")   { right.bits := left.bits }
     else if (arch == "multi")    { right <> left }
-    // else if (arch == "pipeline") { right <> RegEnable(left, left.fire) }
-    // else if (arch == "ooo")      { right <> Queue(left, 16) }
+      // else if (arch == "pipeline") { right <> RegEnable(left, left.fire) }
+      // else if (arch == "ooo")      { right <> Queue(left, 16) }
   }
 }
 

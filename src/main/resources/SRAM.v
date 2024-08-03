@@ -3,6 +3,7 @@ module SRAM(
     input arvalid,
     input [31:0] araddr,
     input load_unsign,
+    input [3:0] arsize,
     output arready,
 
     output reg [31:0] rdata,
@@ -16,7 +17,7 @@ module SRAM(
 
     input wvalid,
     input [31:0] wdata,
-    input [31:0] len,
+    input [31:0] wstrb,
     output reg wready,
 
     output reg bresp,
@@ -41,25 +42,25 @@ module SRAM(
                 rresp <= 1;
                 rvalid <= 1;
                 if(load_unsign) begin
-                    if(len == 1) begin
+                    if(arsize == 1) begin
                         data_delay <= {24'b0, mem_read(araddr, 1)};
                     end
-                    else if(len == 2) begin
+                    else if(arsize == 2) begin
                         data_delay <= {16'b0, mem_read(araddr, 2)};
                     end
-                    else if(len == 4) begin
+                    else if(arsize == 4) begin
                         data_delay <= mem_read(araddr, 4);
                     end
                 end
                 else begin
-                    temp_data = mem_read(araddr, len);
-                    if(len == 1) begin
+                    temp_data = mem_read(araddr, arsize);
+                    if(arsize == 1) begin
                         data_delay <= {{24{temp_data[7]}}, temp_data[7:0]};
                     end
-                    else if(len == 2) begin
+                    else if(arsize == 2) begin
                         data_delay <= {{16{temp_data[15]}}, temp_data[15:0]};
                     end
-                    else if(len == 4) begin
+                    else if(arsize == 4) begin
                         data_delay <= mem_read(araddr, 4);
                     end
                 end
@@ -77,7 +78,7 @@ module SRAM(
 
         if (wvalid && !wready) begin  //写握手
                 wready <= 1;
-                mem_write(awaddr, len, wdata);
+                mem_write(awaddr, wstrb, wdata);
                 bvalid <= 1;
             end
 

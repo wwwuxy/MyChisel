@@ -33,6 +33,9 @@ class UART extends Module {
     io.out.bits.awready := awready
     io.out.bits.rdata   := rdata
     deviceReg           := io.in.bits.wdata
+
+    io.out.bits.rlast := false.B
+    io.out.bits.bid   := 0.U    
     
   // Increment mtime
     mtime := mtime + 1.U

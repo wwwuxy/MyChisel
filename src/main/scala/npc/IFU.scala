@@ -23,11 +23,23 @@ class IFU extends  Module{
     io.ifu_axi_out.bits.rready      := true.B
     io.ifu_axi_out.bits.awaddr      := 0.U
     io.ifu_axi_out.bits.wdata       := 0.U
-    io.ifu_axi_out.bits.wstrb       := 4.U
+    io.ifu_axi_out.bits.wstrb       := 0.U
     io.ifu_axi_out.bits.awvalid     := false.B
     io.ifu_axi_out.bits.bready      := true.B
     io.ifu_axi_out.bits.wvalid      := false.B
     io.ifu_axi_out.bits.araddr      := io.pc
+    io.ifu_axi_out.bits.arsize      := 4.U
+
+    io.ifu_axi_out.bits.awid        := 0.U
+    io.ifu_axi_out.bits.arid        := 0.U
+    io.ifu_axi_out.bits.arlen       := 0.U
+    io.ifu_axi_out.bits.awlen       := 0.U
+    io.ifu_axi_out.bits.awsize      := 0.U
+    io.ifu_axi_out.bits.awburst     := 0.U
+    io.ifu_axi_out.bits.arburst     := 0.U
+    io.ifu_axi_out.bits.wlast       := false.B
+    
+
     io.ifu_valid                    := valid
 
     val IPC = RegInit(0.U(32.W))
