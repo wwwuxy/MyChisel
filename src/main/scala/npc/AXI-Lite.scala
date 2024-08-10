@@ -30,11 +30,11 @@ class  FROM_AXI extends Bundle{
     val rvalid  = Output(Bool())
     val rdata   = Output(UInt(32.W))
     val rlast   = Output(Bool())
-    val rresp   = Output(Bool())
+    val rresp   = Output(UInt(2.W))
     val awready = Output(Bool())
     val wready  = Output(Bool())
     val bvalid  = Output(Bool())
-    val bresp   = Output(Bool())
+    val bresp   = Output(UInt(2.W))
     val bid     = Output(UInt(4.W))
 }
 

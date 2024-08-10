@@ -6,12 +6,12 @@ import chisel3.util._
 
 class IFU extends  Module{
     val io = IO(new Bundle {
-        val pc        = Input(UInt(32.W))
-        val out       = Decoupled(new IFU_IDU)
-        val ifu_axi_out   = Decoupled(new TO_AXI)
-        val ifu_axi_in    = Flipped(Decoupled(new FROM_AXI))
-        val ifu_valid     = Output(Bool())
-        val diff_test = Output(Bool())
+        val pc          = Input(UInt(32.W))
+        val out         = Decoupled(new IFU_IDU)
+        val ifu_axi_out = Decoupled(new TO_AXI)
+        val ifu_axi_in  = Flipped(Decoupled(new FROM_AXI))
+        val ifu_valid   = Output(Bool())
+        val diff_test   = Output(Bool())
     })
     io.diff_test := false.B
 //set signs
@@ -67,7 +67,7 @@ class IFU extends  Module{
       }
       is(sGetinst) {
         when(io.ifu_axi_out.bits.rready && io.ifu_axi_in.bits.rvalid) {
-          when(io.ifu_axi_in.bits.rresp) {
+          when(io.ifu_axi_in.bits.rresp === 0.U) {
             IR    := io.ifu_axi_in.bits.rdata
             IPC   := io.pc
             valid := false.B

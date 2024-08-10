@@ -1,10 +1,10 @@
 import re
 
-def clean_verilog(file_path, lines_to_remove=0):
+def clean_verilog(file_path, lines_to_remove):
     with open(file_path, 'r') as file:
         lines = file.readlines()
 
-    # Remove specified number of lines from the end
+    # 去除文件末尾的空行
     if lines_to_remove > 0:
         lines = lines[:-lines_to_remove]
 
@@ -22,4 +22,4 @@ def clean_verilog(file_path, lines_to_remove=0):
         file.write(cleaned_content)
 
 if __name__ == "__main__":
-    clean_verilog('/home/wuxy/chisel/MyChisel/generated/top.v', lines_to_remove=3)
+    clean_verilog('/home/wuxy/chisel/MyChisel/generated/ysyx_23060192.v', lines_to_remove=2)

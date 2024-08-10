@@ -11,7 +11,7 @@ class PC extends Module{
         // val no_ld = Input(Bool())
     }) 
 
-    val pc = RegInit("h8000_0000".U(32.W))
+    val pc = RegInit("h2000_0000".U(32.W))      //MROM
     io.next_pc := pc
     val jump_pc = pc + io.in.bits.imm
     val jalr_pc = io.in.bits.rd1 + io.in.bits.imm

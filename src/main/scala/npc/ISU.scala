@@ -96,9 +96,9 @@ class ISU extends Module {
       }
     }
     is(sValid) {
-      when(io.isu_axi_in.bits.rresp) {
+      when(io.isu_axi_in.bits.rresp === 0.U) {
         load_finish := true.B
-      }.elsewhen(io.isu_axi_in.bits.bresp) {
+      }.elsewhen(io.isu_axi_in.bits.bresp === 0.U) {
         store_finish := true.B
       }
       valid := false.B

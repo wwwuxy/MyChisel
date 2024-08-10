@@ -10,6 +10,13 @@ import javax.sound.sampled.Control
 import chisel3.util._
 
 
+class ebreak extends BlackBox with HasBlackBoxResource {
+  val io = IO(new Bundle {
+    val is_ebreak = Input(Bool())
+  })
+  addResource("/ebreak.v")
+}
+
 class IDU extends Module{
     val io = IO(new Bundle{
         val in  = Flipped(Decoupled(new IFU_IDU))
@@ -23,6 +30,8 @@ class IDU extends Module{
     val Contorller   = Module(new CONTORLLER())
     val RegisterFile = Module(new REGISTERFILE())
 
+    val ebreak = Module(new ebreak())
+
   //Controller
         Contorller.io.inst    := io.in.bits.inst
         Contorller.io.rs1     := RegisterFile.io.rd1
@@ -33,6 +42,9 @@ class IDU extends Module{
         io.out.bits.pc        := io.in.bits.pc
         io.out.bits.len       := Contorller.io.len
 
+  //ebreak
+        ebreak.io.is_ebreak := Contorller.io.is_ebreak
+        
   //RegisterFile
         RegisterFile.io.inst      := io.in.bits.inst
         RegisterFile.io.wr_en     := Contorller.io.rf_wr_en && io.wbu_valid

@@ -23,8 +23,18 @@ object Elaborate extends App{
         "--disable-all-randomization"
     )
 
+//   // 添加自定义转换
+//   val customTransforms = Seq(new AddPrefixTransform)
+
+//   (new ChiselStage).execute(
+//     args = filltlflag,
+//     annotations = Seq(
+//       firrtl.stage.RunFirrtlTransformAnnotation(Dependency[AddPrefixTransform])
+//     )
+//   )
+
     ChiselStage.emitSystemVerilogFile(
-        new top,
+        new ysyx_23060192,
         filltlflag,
         firtoolOpts
     )
