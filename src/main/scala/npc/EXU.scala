@@ -26,8 +26,10 @@ class EXU extends Module{
         io.out.bits.mem_wr_en   := io.in.bits.mem_wr_en
         io.out.bits.mem_rd_en   := io.in.bits.mem_rd_en
         io.out.bits.rf_wr_en    := io.in.bits.rf_wr_en
-        io.out.bits.len         := io.in.bits.len
         io.out.bits.load_unsign := io.in.bits.load_unsign
+        io.out.bits.arsize      := io.in.bits.arsize
+        io.out.bits.awsize      := io.in.bits.awsize
+        io.out.bits.wstrb       := io.in.bits.wstrb
 
   //for pc
         io.out.bits.imm       := io.in.bits.imm

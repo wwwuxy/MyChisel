@@ -5,7 +5,6 @@ import chisel3.util._
 
 class  TO_AXI extends Bundle{
     val arvalid     = Output(Bool())
-    val load_unsign = Output(Bool())
     val araddr      = Output(UInt(32.W))
     val arid        = Output(UInt(4.W))
     val arlen       = Output(UInt(8.W))
@@ -20,7 +19,7 @@ class  TO_AXI extends Bundle{
     val awburst     = Output(UInt(2.W))
     val wvalid      = Output(Bool())
     val wdata       = Output(UInt(32.W))
-    val wstrb       = Output(UInt(32.W))
+    val wstrb       = Output(UInt(4.W))
     val wlast       = Output(Bool())
     val bready      = Output(Bool())
 }

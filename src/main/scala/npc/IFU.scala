@@ -18,7 +18,6 @@ class IFU extends  Module{
     val arvalid = RegInit(false.B)
     val valid   = RegInit(false.B)
 //initial
-    io.ifu_axi_out.bits.load_unsign := false.B
     io.ifu_axi_out.bits.arvalid     := arvalid
     io.ifu_axi_out.bits.rready      := true.B
     io.ifu_axi_out.bits.awaddr      := 0.U
@@ -27,8 +26,8 @@ class IFU extends  Module{
     io.ifu_axi_out.bits.awvalid     := false.B
     io.ifu_axi_out.bits.bready      := true.B
     io.ifu_axi_out.bits.wvalid      := false.B
-    io.ifu_axi_out.bits.araddr      := io.pc
-    io.ifu_axi_out.bits.arsize      := 4.U
+    io.ifu_axi_out.bits.araddr      := 0.U
+    io.ifu_axi_out.bits.arsize      := 2.U
 
     io.ifu_axi_out.bits.awid        := 0.U
     io.ifu_axi_out.bits.arid        := 0.U
@@ -61,6 +60,7 @@ class IFU extends  Module{
       }
       is(sFetch) {
         when(io.ifu_axi_out.bits.arvalid && io.ifu_axi_in.bits.arready) {
+          io.ifu_axi_out.bits.araddr := io.pc
           arvalid := false.B
           state   := sGetinst
         }

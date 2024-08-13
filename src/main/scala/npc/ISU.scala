@@ -20,10 +20,11 @@ class ISU extends Module {
   val awvalid      = RegInit(false.B)
   val wvalid       = RegInit(false.B)
   val valid        = RegInit(false.B)
+  val dm_out       = RegInit(0.U(32.W))
 
   io.isu_valid := valid
 
-      // Initializing isu_axi_out signals
+  // Initializing isu_axi_out signals
   io.isu_axi_out.bits.arvalid := arvalid
   io.isu_axi_out.bits.rready  := true.B
   io.isu_axi_out.bits.awvalid := awvalid
@@ -34,22 +35,32 @@ class ISU extends Module {
   io.isu_axi_out.bits.arid    := 0.U
   io.isu_axi_out.bits.arlen   := 0.U
   io.isu_axi_out.bits.awlen   := 0.U
-  io.isu_axi_out.bits.awsize  := 0.U
   io.isu_axi_out.bits.awburst := 0.U
   io.isu_axi_out.bits.arburst := 0.U
-  io.isu_axi_out.bits.wlast   := false.B
+  io.isu_axi_out.bits.wlast   := true.B
   
   io.isu_axi_out.valid := false.B
   io.isu_axi_in.ready  := false.B
 
-  io.isu_axi_out.bits.arsize      := io.in.bits.len
-  io.isu_axi_out.bits.wstrb       := io.in.bits.len
-  io.isu_axi_out.bits.load_unsign := io.in.bits.load_unsign
+  io.isu_axi_out.bits.arsize      := io.in.bits.arsize
+  io.isu_axi_out.bits.awsize      := io.in.bits.awsize
+  io.isu_axi_out.bits.wstrb       := io.in.bits.wstrb
   io.isu_axi_out.bits.araddr      := io.in.bits.alu_out
   io.isu_axi_out.bits.awaddr      := io.in.bits.alu_out
   io.isu_axi_out.bits.wdata       := io.in.bits.data
 
-      // State Machine for load/store operations
+  when(io.in.bits.load_unsign){
+    when(io.in.bits.arsize === 0.U){
+      dm_out := Cat(Fill(24, 0.U), io.isu_axi_in.bits.rdata(7, 0))
+    }.elsewhen(io.in.bits.arsize === 1.U){
+      dm_out := Cat(Fill(16, 0.U), io.isu_axi_in.bits.rdata(15, 0))
+    }.otherwise{
+      dm_out := io.isu_axi_in.bits.rdata
+    }
+  }
+    
+
+  // State Machine for load/store operations
   val sIdle :: sHandshake :: sLoad :: sStoreAddr :: sStoreData :: sValid :: Nil = Enum(6)
   
   val state = RegInit(sIdle)
@@ -61,7 +72,7 @@ class ISU extends Module {
           valid := true.B
           state := sHandshake
         }.otherwise{
-        state := sValid
+          state := sValid
         }
       }
     }
@@ -70,7 +81,7 @@ class ISU extends Module {
         when(io.in.bits.is_load) {
           arvalid := true.B
           state   := sLoad
-        }.elsewhen(io.in.bits.mem_wr_en) {
+        }.elsewhen(io.in.bits.isS_type) {
           awvalid := true.B
           state   := sStoreAddr
         }
@@ -96,17 +107,25 @@ class ISU extends Module {
       }
     }
     is(sValid) {
-      when(io.isu_axi_in.bits.rresp === 0.U) {
-        load_finish := true.B
-      }.elsewhen(io.isu_axi_in.bits.bresp === 0.U) {
-        store_finish := true.B
+      when(io.in.bits.is_load) {
+        when(io.isu_axi_in.bits.rvalid && io.isu_axi_in.bits.rresp === 0.U){
+          load_finish := true.B
+          valid := false.B
+          state := sIdle
+        }
+      }.elsewhen(io.in.bits.isS_type) {
+        when(io.isu_axi_in.bits.bresp === 0.U && io.isu_axi_in.bits.bvalid){
+          store_finish := true.B
+          valid := false.B
+          state := sIdle
+        }
+      }.otherwise{
+        state := sIdle
       }
-      valid := false.B
-      state := sIdle
     }
   }
 
-  io.out.bits.dm_out       := io.isu_axi_in.bits.rdata
+  io.out.bits.dm_out       := dm_out
   io.out.bits.alu_out      := io.in.bits.alu_out
   io.out.bits.jump_jalr    := io.in.bits.jump_jalr
   io.out.bits.jump_en      := io.in.bits.jump_en
@@ -123,7 +142,7 @@ class ISU extends Module {
   io.out.bits.store_finish := store_finish
   io.out.bits.is_csr       := io.in.bits.is_csr
   
-      // For WBU
+  // For WBU
   io.out.bits.is_cmp   := io.in.bits.is_cmp
   io.out.bits.is_load  := io.in.bits.is_load
   io.out.bits.isS_type := io.in.bits.isS_type

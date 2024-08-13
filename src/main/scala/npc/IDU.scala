@@ -40,7 +40,9 @@ class IDU extends Module{
         io.out.bits.alu_a_sel := Contorller.io.alu_a_sel
         io.out.bits.alu_b_sel := Contorller.io.alu_b_sel
         io.out.bits.pc        := io.in.bits.pc
-        io.out.bits.len       := Contorller.io.len
+        io.out.bits.arsize    := Contorller.io.arsize
+        io.out.bits.awsize    := Contorller.io.awsize
+        io.out.bits.wstrb     := Contorller.io.wstrb
 
   //ebreak
         ebreak.io.is_ebreak := Contorller.io.is_ebreak
