@@ -3,6 +3,12 @@ package  npc
 import chisel3._
 import chisel3.util._
 
+class accept_fault extends BlackBox with HasBlackBoxResource {
+  val io = IO(new Bundle {
+    val is_accept_fault = Input(Bool())
+  })
+  addResource("/Accept_Fault.v")
+}
 
 class XBAR extends Module{
     val io = IO(new Bundle{
@@ -16,11 +22,15 @@ class XBAR extends Module{
         val isu_valid   = Input(Bool())
     })
 
+    val accept_fault = Module(new accept_fault())
+    val Accept_Fault = RegInit(false.B)
+    accept_fault.io.is_accept_fault := Accept_Fault
+
         // val Sram = Module(new SRAM())
         // val Uart = Module(new UART())
         // Sram.io.clk := clock
 
-    val sIdle :: sIFU :: sISU :: sHandshake :: sBusy :: Nil = Enum(5)
+    val sIdle :: sIFU :: sISU :: sHandshake :: sBusy :: sAccept_Fault :: Nil = Enum(6)
     val state                                               = RegInit(sIdle)
 
               // for axi
@@ -64,7 +74,12 @@ class XBAR extends Module{
       is(sBusy) {
         when((io.xbar_in.bits.rresp === 0.U && io.xbar_in.bits.rvalid)|| (io.xbar_in.bits.bresp === 0.U && io.xbar_in.bits.bvalid)) {
           state := sIdle
+        }.elsewhen(io.xbar_in.bits.rresp === 10.U || io.xbar_in.bits.bresp === 10.U || io.xbar_in.bits.rresp === 11.U || io.xbar_in.bits.bresp === 11.U) {
+          state := sAccept_Fault
         }
+      }
+      is(sAccept_Fault) {
+        Accept_Fault := true.B
       }
     }
 
@@ -116,7 +131,7 @@ class XBAR extends Module{
 
   io.xbar_out.bits.arid    := 0.U
   io.xbar_out.bits.awid    := 0.U
-  io.xbar_out.bits.wlast   := false.B
+  io.xbar_out.bits.wlast   := true.B
   io.xbar_out.bits.awburst := 0.U
   io.xbar_out.bits.arburst := 0.U
   io.xbar_out.bits.arlen   := 0.U

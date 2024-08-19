@@ -3,6 +3,13 @@ package npc
 import chisel3._
 import chisel3.util._
 
+class difftest extends BlackBox with HasBlackBoxResource{
+    val io = IO(new Bundle{
+        val start_difftest = Input(Bool())
+    })
+    addResource("/difftest.v")
+}
+
 class WBU extends Module{
     val io = IO(new Bundle{
         val in        = Flipped(Decoupled(new ISU_WBU))
@@ -11,6 +18,9 @@ class WBU extends Module{
         val alu_out   = Output(UInt(32.W))
         val wbu_valid = Output(Bool())
     })
+        val diff_test = Module(new difftest())
+        val start_difftest               = WireInit(false.B)
+            diff_test.io.start_difftest := start_difftest
 
   //for regfiles
         io.dm_out  := io.in.bits.dm_out
@@ -52,7 +62,8 @@ class WBU extends Module{
         }
       }
       is(sValid) {
-          state := sIdle
+        start_difftest := true.B
+        state := sIdle
         }
       }
 

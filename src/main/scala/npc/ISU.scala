@@ -48,16 +48,6 @@ class ISU extends Module {
   io.isu_axi_out.bits.araddr      := io.in.bits.alu_out
   io.isu_axi_out.bits.awaddr      := io.in.bits.alu_out
   io.isu_axi_out.bits.wdata       := io.in.bits.data
-
-  when(io.in.bits.load_unsign){
-    when(io.in.bits.arsize === 0.U){
-      dm_out := Cat(Fill(24, 0.U), io.isu_axi_in.bits.rdata(7, 0))
-    }.elsewhen(io.in.bits.arsize === 1.U){
-      dm_out := Cat(Fill(16, 0.U), io.isu_axi_in.bits.rdata(15, 0))
-    }.otherwise{
-      dm_out := io.isu_axi_in.bits.rdata
-    }
-  }
     
 
   // State Machine for load/store operations
@@ -109,6 +99,17 @@ class ISU extends Module {
     is(sValid) {
       when(io.in.bits.is_load) {
         when(io.isu_axi_in.bits.rvalid && io.isu_axi_in.bits.rresp === 0.U){
+            when(io.in.bits.load_unsign){
+               when(io.in.bits.arsize === 0.U){
+                 dm_out := Cat(Fill(24, 0.U), io.isu_axi_in.bits.rdata(7, 0))
+               }.elsewhen(io.in.bits.arsize === 1.U){
+                 dm_out := Cat(Fill(16, 0.U), io.isu_axi_in.bits.rdata(15, 0))
+               }.otherwise{
+                 dm_out := io.isu_axi_in.bits.rdata
+               }
+             }.otherwise{
+               dm_out := io.isu_axi_in.bits.rdata
+             }
           load_finish := true.B
           valid := false.B
           state := sIdle

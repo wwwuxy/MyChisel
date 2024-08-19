@@ -3,12 +3,21 @@ package npc
 import chisel3._
 import chisel3.util._
 
+class npc_alu_out extends BlackBox with HasBlackBoxResource{
+    val io = IO(new Bundle{
+        val alu_out = Input(UInt(32.W))
+    })
+    addResource("/npc_alu_out.v")
+}
+
 class EXU extends Module{
     val io = IO(new Bundle {
         val in      = Flipped(Decoupled(new IDU_EXU))
         val out     = Decoupled(new EXU_ISU)
         val alu_rsl = Output(UInt(32.W))
     })
+
+    val npc_alu_out = Module(new npc_alu_out())
 
         val Alu               = Module(new ALU)
             Alu.io.pc        := io.in.bits.pc
@@ -49,7 +58,8 @@ class EXU extends Module{
         io.out.bits.pc       := io.in.bits.pc
   //for wbu
         io.out.bits.is_cmp := io.in.bits.is_cmp
-        
+
+        npc_alu_out.io.alu_out := Alu.io.rsl
 
     // State Machine
         val sIdle :: sValid :: Nil = Enum(2)

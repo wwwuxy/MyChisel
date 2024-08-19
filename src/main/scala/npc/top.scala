@@ -7,12 +7,6 @@ import chisel3.util._
 
 class ysyx_23060192 extends Module{
     val io = IO(new Bundle {
-            // val pc                 = Output(UInt(32.W))
-            // val alu_rsl            = Output(UInt(32.W))
-            // val inst               = Output(UInt(32.W))
-            // val imm                = Output(UInt(32.W))
-            // val diff_test          = Output(Bool())
-            // val wbu_valid          = Output(Bool())
         val interrupt = Input(Bool())
 
         val master_arvalid = Output(Bool())
@@ -154,14 +148,6 @@ class ysyx_23060192 extends Module{
     io.slave_bvalid  := 0.U
     io.slave_bresp   := 0.U
     io.slave_bid     := 0.U
-
-        //for sdb    
-        // io.pc        := idu.io.out.bits.pc
-        // io.alu_rsl   := exu.io.alu_rsl
-        // io.inst      := ifu.io.out.bits.inst
-        // io.imm       := idu.io.out.bits.imm
-        // io.diff_test := ifu.io.diff_test
-        // io.wbu_valid := wbu.io.wbu_valid
 }
 
 object StageConnect {

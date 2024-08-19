@@ -14,3 +14,7 @@ git:
 	git commit
 push:
 	git push origin Soc
+
+count:
+	@echo "Total valid lines of code:"
+	@find src/main/scala/npc -name "*.scala" | xargs cat | grep -v '^\s*//' | grep -v '^\s*\*\|/\*\|\*/' | wc -l

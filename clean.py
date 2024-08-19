@@ -22,4 +22,4 @@ def clean_verilog(file_path, lines_to_remove):
         file.write(cleaned_content)
 
 if __name__ == "__main__":
-    clean_verilog('/home/wuxy/chisel/MyChisel/generated/ysyx_23060192.v', lines_to_remove=2)
+    clean_verilog('/home/wuxy/chisel/MyChisel/generated/ysyx_23060192.v', lines_to_remove=6)
